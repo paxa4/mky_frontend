@@ -231,6 +231,24 @@ export async function apiMe(token = getToken(), options = {}) {
   return res.json();
 }
 
+export async function apiUpdateProfile(profile) {
+  const res = await authFetch(`${API_BASE}/auth/me`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      last_name: profile?.last_name ?? null,
+      first_name: profile?.first_name ?? null,
+      middle_name: profile?.middle_name ?? null,
+    }),
+    expireSessionOnUnauthorized: true,
+  });
+  const data = await readJson(res);
+  if (!res.ok) {
+    throw new Error(getErrorMessage(data, "Не удалось сохранить данные профиля"));
+  }
+  return data;
+}
+
 async function refreshAuthToken() {
   const refreshToken = getRefreshToken();
   if (!refreshToken) return null;

@@ -21,15 +21,19 @@ function AdminIcon({ name }) {
 }
 
 function userName(currentUser) {
-  const fio = [currentUser?.lastName, currentUser?.firstName, currentUser?.middleName]
+  const fio = [
+    currentUser?.lastName || currentUser?.last_name,
+    currentUser?.firstName || currentUser?.first_name,
+    currentUser?.middleName || currentUser?.middle_name,
+  ]
     .filter(Boolean)
     .join(" ");
   return currentUser?.full_name || currentUser?.fullName || fio || currentUser?.username || currentUser?.email || "Администратор";
 }
 
 function shortUserName(currentUser, fullName) {
-  const last = currentUser?.lastName || "";
-  const first = currentUser?.firstName || "";
+  const last = currentUser?.lastName || currentUser?.last_name || "";
+  const first = currentUser?.firstName || currentUser?.first_name || "";
   if (last && first) {
     return `${last} ${first.charAt(0).toUpperCase()}.`;
   }
@@ -43,8 +47,8 @@ function shortUserName(currentUser, fullName) {
 }
 
 function _userInitials(currentUser, fullName) {
-  const last = currentUser?.lastName || "";
-  const first = currentUser?.firstName || "";
+  const last = currentUser?.lastName || currentUser?.last_name || "";
+  const first = currentUser?.firstName || currentUser?.first_name || "";
   if (last || first) {
     return `${(first.charAt(0) || "").toUpperCase()}${(last.charAt(0) || "").toUpperCase()}` || (fullName || "А").slice(0, 2).toUpperCase();
   }

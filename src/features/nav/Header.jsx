@@ -90,8 +90,10 @@ export default function Header({ onGoAuth, onGoAdmin, onGoProfile, currentUser }
   const a11yMode = a11ySettings.enabled;
 
   const currentPath = normalizePath(location.pathname);
+  const currentFirstName = currentUser?.firstName || currentUser?.first_name || "";
+  const currentLastName = currentUser?.lastName || currentUser?.last_name || "";
   const userInitials = currentUser
-    ? `${currentUser.firstName?.[0] || ""}${currentUser.lastName?.[0] || ""}` || "П"
+    ? `${currentFirstName[0] || ""}${currentLastName[0] || ""}` || "П"
     : "П";
   const currentRole = typeof currentUser?.role === "object" ? currentUser.role?.role_name : currentUser?.role;
   const canShowAdminButton = Boolean(currentUser && onGoAdmin && (currentRole === "admin" || currentRole === "methodist" || currentRole === "domu_editor"));
@@ -1233,7 +1235,7 @@ export default function Header({ onGoAuth, onGoAdmin, onGoProfile, currentUser }
             {currentUser ? (
               <button className="header-profile-btn" type="button" onClick={onGoProfile} title="Профиль">
                 <span className="header-avatar">{userInitials}</span>
-                <span className="header-action-label">{currentUser.firstName || "Профиль"}</span>
+                <span className="header-action-label">{currentFirstName || "Профиль"}</span>
               </button>
             ) : (
               <>

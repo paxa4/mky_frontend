@@ -1,13 +1,13 @@
 import { useMemo, useState } from "react";
 import { useLocation } from "react-router-dom";
 import { canAccessAdmin, canAccessDomuAdmin, canAccessTpmpkAdmin, getRoleLabel } from "../auth.js";
+import { apiUpdateProfile } from "../api.js";
 
 const MOCK_USER = {
   id: 1,
   firstName: "Ирина",
   lastName: "Абрамова",
   middleName: "Владимировна",
-  username: "abramova_iv",
   email: "abramova@mc.eduirk.ru",
   phone: "+7 (3952) 20-19-85",
   position: "Методист",
@@ -83,7 +83,9 @@ function Icon({ name, size = 18 }) {
 }
 
 function Avatar({ user, size = 88, compact = false }) {
-  const initials = `${user.firstName?.[0] || ""}${user.lastName?.[0] || ""}`;
+  const firstName = user.firstName || user.first_name || "";
+  const lastName = user.lastName || user.last_name || "";
+  const initials = `${firstName[0] || ""}${lastName[0] || ""}`;
   return (
     <div className={compact ? "profile-avatar profile-avatar--compact" : "profile-avatar"} style={{ "--avatar-size": `${size}px` }}>
       {initials || "?"}
@@ -138,13 +140,17 @@ function EmptyState({ icon, text }) {
   );
 }
 
-export default function ProfilePage({ user = MOCK_USER, onBack, onAdmin, onTpmpkAdmin, onLogout, userArticles = [] }) {
+export default function ProfilePage({ user = MOCK_USER, onBack, onAdmin, onTpmpkAdmin, onLogout, onUserUpdated, userArticles = [] }) {
   const location = useLocation();
   const [activeTab, setActiveTab] = useState("overview");
   const [editMode, setEditMode] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState("");
   const [form, setForm] = useState({
-    username: user.username || "",
+    last_name: user.last_name || user.lastName || "",
+    first_name: user.first_name || user.firstName || "",
+    middle_name: user.middle_name || user.middleName || "",
     phone: user.phone || "",
     position: user.position || "",
     organization: user.organization || "",
@@ -178,10 +184,26 @@ export default function ProfilePage({ user = MOCK_USER, onBack, onAdmin, onTpmpk
 
   const totalHours = (user.certificates || []).reduce((sum, certificate) => sum + (certificate.hours || 0), 0);
 
-  const handleSave = () => {
-    setSaved(true);
-    setEditMode(false);
-    setTimeout(() => setSaved(false), 2500);
+  const handleSave = async () => {
+    setSaving(true);
+    setSaveError("");
+    try {
+      const updated = await apiUpdateProfile(form);
+      onUserUpdated?.(updated);
+      setForm((current) => ({
+        ...current,
+        last_name: updated.last_name || "",
+        first_name: updated.first_name || "",
+        middle_name: updated.middle_name || "",
+      }));
+      setSaved(true);
+      setEditMode(false);
+      setTimeout(() => setSaved(false), 2500);
+    } catch (error) {
+      setSaveError(error?.message || "Не удалось сохранить данные профиля");
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
@@ -516,9 +538,9 @@ export default function ProfilePage({ user = MOCK_USER, onBack, onAdmin, onTpmpk
               <Avatar user={user} size={118} />
               <div className="profile-hero__main">
                 <span className="profile-kicker">{hasTpmpkAccess ? "Рабочий центр психолога ТПМПК" : "Рабочий центр методиста"}</span>
-                <h1>{user.lastName} {user.firstName} {user.middleName}</h1>
+                <h1>{user.lastName || user.last_name} {user.firstName || user.first_name} {user.middleName || user.middle_name}</h1>
                 <div className="profile-subtitle">
-                  {form.position || user.position} · @{form.username || user.username} · {user.email}
+                  {[form.position || user.position, user.email].filter(Boolean).join(" · ")}
                 </div>
                 <div className="profile-tags">
                   <Tag tone="hero">{getRoleLabel(roleName)}</Tag>
@@ -621,7 +643,9 @@ export default function ProfilePage({ user = MOCK_USER, onBack, onAdmin, onTpmpk
                     <>
                       <div className="form-grid">
                         {[
-                          { label: "Username", key: "username" },
+                          { label: "Фамилия", key: "last_name" },
+                          { label: "Имя", key: "first_name" },
+                          { label: "Отчество", key: "middle_name" },
                           { label: "Телефон", key: "phone" },
                           { label: "Должность", key: "position" },
                           { label: "Организация", key: "organization", wide: true },
@@ -638,13 +662,15 @@ export default function ProfilePage({ user = MOCK_USER, onBack, onAdmin, onTpmpk
                       </div>
                       <div className="form-actions">
                         <button className="profile-btn profile-btn--ghost" onClick={() => setEditMode(false)}>Отмена</button>
-                        <button className="profile-btn profile-btn--primary" onClick={handleSave}>Сохранить изменения</button>
+                        {saveError && <div className="profile-access-alert" role="alert">{saveError}</div>}
+                        <button className="profile-btn profile-btn--primary" onClick={handleSave} disabled={saving}>
+                          {saving ? "Сохранение..." : "Сохранить изменения"}
+                        </button>
                       </div>
                     </>
                   ) : (
                     <div className="info-grid">
                       <InfoTile icon="mail" label="Email" value={user.email} />
-                      <InfoTile icon="user" label="Username" value={`@${form.username}`} />
                       <InfoTile icon="shield" label="Роль" value={getRoleLabel(roleName)} />
                       <InfoTile icon="calendar" label="Регистрация" value={new Date(user.created_at).toLocaleDateString("ru-RU", { day: "numeric", month: "long", year: "numeric" })} />
                       <InfoTile icon="phone" label="Телефон" value={form.phone} />

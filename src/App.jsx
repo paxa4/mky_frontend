@@ -374,7 +374,11 @@ function AppRoutes() {
   const [apiEventsNews, setApiEventsNews] = useState([]);
 
   const currentUserFullName = useMemo(() => {
-    const fio = [currentUser?.lastName, currentUser?.firstName, currentUser?.middleName].filter(Boolean).join(" ");
+    const fio = [
+      currentUser?.lastName || currentUser?.last_name,
+      currentUser?.firstName || currentUser?.first_name,
+      currentUser?.middleName || currentUser?.middle_name,
+    ].filter(Boolean).join(" ");
     return currentUser?.full_name || currentUser?.fullName || fio || currentUser?.author_name || currentUser?.email || "Редакция ИМЦРО";
   }, [currentUser]);
 
@@ -464,7 +468,14 @@ function AppRoutes() {
 
   useEffect(() => {
     if (!getStoredUser()) return;
-    apiMe().catch(() => {
+    apiMe().then((profile) => {
+      setCurrentUser((current) => {
+        if (!current || !profile) return current;
+        const next = { ...current, ...profile };
+        storeUser(next);
+        return next;
+      });
+    }).catch(() => {
       // Individual API requests surface their own auth errors; this only warms the saved session.
     });
   }, []);
@@ -630,6 +641,14 @@ function AppRoutes() {
     void loadPublicNews();
     navigate("/auth?tab=login", { replace: true });
   }, [loadPublicNews, navigate]);
+
+  const handleUserUpdated = useCallback((profile) => {
+    setCurrentUser((current) => {
+      const next = { ...current, ...profile };
+      storeUser(next);
+      return next;
+    });
+  }, []);
 
   const adminTarget = canAccessAdmin(currentUser)
     ? "/admin"
@@ -835,6 +854,7 @@ function AppRoutes() {
                 onAdmin={goAdmin}
                 onTpmpkAdmin={() => navigate("/admin/tpmpk")}
                 onLogout={handleLogout}
+                onUserUpdated={handleUserUpdated}
               />
             </RequireAuth>
           }
