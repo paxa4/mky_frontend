@@ -7,6 +7,8 @@ import TemplateConstructor from "../components/certificates/TemplateConstructor.
 import AnswerQualityStats from "../components/chat/AnswerQualityStats.jsx";
 import ChatSettings from "../components/chat/ChatSettings.jsx";
 import ArticlesModule from "../features/admin/ArticlesModule.jsx";
+import AuditLogModule from "../features/admin/AuditLogModule.jsx";
+import PortalSettingsModule from "../features/admin/PortalSettingsModule.jsx";
 import UsersRolesModule from "../features/admin/UsersRolesModule.jsx";
 import AdminLayout from "../features/admin/AdminLayout.jsx";
 import { canManageUsers, hasPermission } from "../auth.js";
@@ -571,17 +573,9 @@ export default function AdminPage({ currentUser, onArticlesChanged }) {
   } else if (activeKey === "users") {
     content = <UsersRolesModule currentUser={currentUser} />;
   } else if (activeKey === "audit") {
-    content = (
-      <PlaceholderModule title="Журнал действий">
-        Здесь будет отображаться история действий сотрудников: публикации, выпуск грамот, изменения шаблонов и прав доступа.
-      </PlaceholderModule>
-    );
+    content = <AuditLogModule />;
   } else {
-    content = (
-      <PlaceholderModule title="Настройки портала">
-        Служебные параметры портала будут доступны в этой рабочей области.
-      </PlaceholderModule>
-    );
+    content = <PortalSettingsModule />;
   }
 
   return (

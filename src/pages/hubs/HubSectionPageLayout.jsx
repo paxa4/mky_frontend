@@ -63,36 +63,8 @@ function getArticleDescription(article) {
     || "Материал раздела с подробной информацией, документами и методическими рекомендациями.";
 }
 
-function createFallbackArticles(sectionTitle = "раздел") {
-  return [
-    {
-      id: "section-fallback-methodical",
-      date: "02.09.2024",
-      category: "Методические материалы",
-      title: "Опубликованы методические материалы по разделу",
-      description: `Подборка материалов для направления «${sectionTitle}» готовится к размещению и будет обновляться ответственными специалистами.`,
-      href: "/novosti/",
-      isFallback: true,
-    },
-    {
-      id: "section-fallback-documents",
-      date: "16.09.2024",
-      category: "Документы",
-      title: "Обновлены нормативные документы",
-      description: "В разделе будут размещены актуальные приказы, положения и официальные документы для образовательных организаций.",
-      href: "/novosti/",
-      isFallback: true,
-    },
-    {
-      id: "section-fallback-recommendations",
-      date: "30.09.2024",
-      category: "Рекомендации",
-      title: "Добавлены рекомендации для образовательных организаций",
-      description: "Материалы помогут быстро найти порядок действий, сроки и контактную информацию по выбранному направлению.",
-      href: "/novosti/",
-      isFallback: true,
-    },
-  ];
+function createFallbackArticles() {
+  return [];
 }
 
 export function ArticleCard({ article, onOpenArticle, className = "" }) {
@@ -140,12 +112,11 @@ export function ArticleList({
   title = "Статьи и материалы",
   description = "",
   articles = [],
-  fallbackTitle,
   onOpenArticle,
   className = "",
 }) {
   const rows = normalizeArray(articles);
-  const visibleArticles = rows.length ? rows : createFallbackArticles(fallbackTitle);
+  const visibleArticles = rows.length ? rows : createFallbackArticles();
 
   return (
     <ImcroSection className={cx("hub-section-materials-section", className)}>
@@ -155,15 +126,19 @@ export function ArticleList({
         </div>
         {description && <p>{description}</p>}
       </div>
-      <div className="hub-section-article-list">
-        {visibleArticles.map((article, index) => (
-          <ArticleCard
-            key={article.id || article.slug || `${article.title}-${index}`}
-            article={article}
-            onOpenArticle={onOpenArticle}
-          />
-        ))}
-      </div>
+      {visibleArticles.length ? (
+        <div className="hub-section-article-list">
+          {visibleArticles.map((article, index) => (
+            <ArticleCard
+              key={article.id || article.slug || `${article.title}-${index}`}
+              article={article}
+              onOpenArticle={onOpenArticle}
+            />
+          ))}
+        </div>
+      ) : (
+        <div className="hub-section-empty">В этом разделе пока нет опубликованных материалов.</div>
+      )}
     </ImcroSection>
   );
 }

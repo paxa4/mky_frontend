@@ -57,6 +57,9 @@ const ArchivSectionPage = lazyNamed(loadHubPages, "ArchivSectionPage");
 const DeyatelnostSectionPage = lazyNamed(loadHubPages, "DeyatelnostSectionPage");
 const HubHomeRoutePage = lazyNamed(loadHubPages, "HubHomeRoutePage");
 const KonkursySectionPage = lazyNamed(loadHubPages, "KonkursySectionPage");
+const MethodikaHomePage = lazyNamed(loadHubPages, "MethodikaHomePage");
+const MethodikaStaticPage = lazyNamed(loadHubPages, "MethodikaStaticPage");
+const MethodikaSubjectPage = lazyNamed(loadHubPages, "MethodikaSubjectPage");
 const NokoHomePage = lazyNamed(loadHubPages, "NokoHomePage");
 const NokoSectionPage = lazyNamed(loadHubPages, "NokoSectionPage");
 
@@ -247,6 +250,14 @@ function stripMkyPrefix(path) {
   return typeof path === "string" ? path.replace(new RegExp("^/" + "mky" + "(?=/)"), "") : path;
 }
 
+function normalizePublicAssetUrl(path) {
+  if (typeof path !== "string" || !path.trim()) return path;
+  const value = stripMkyPrefix(path.trim());
+  if (/^(https?:|blob:|data:)/i.test(value)) return value;
+  const normalizedPath = value.startsWith("/") ? value : `/${value}`;
+  return `${API_BASE}${normalizedPath}`;
+}
+
 function isLegacyDemoArticle(article) {
   const slug = String(article?.slug || article?.id || "").trim();
   return LEGACY_DEMO_ARTICLE_SLUGS.has(slug);
@@ -319,7 +330,12 @@ function articleToNewsItem(article) {
     cover_image_url: stripMkyPrefix(article.cover_image_url || image),
     blocks: article.blocks || [],
     sections: article.sections || [],
-    attachments: article.attachments || [],
+    attachments: Array.isArray(article.attachments)
+      ? article.attachments.map((file) => ({
+          ...file,
+          url: normalizePublicAssetUrl(file?.url),
+        }))
+      : [],
     author: getAuthorLabel(article),
     author_id: article.author_id || null,
     author_name: article.author_name || article.author_full_name || article.full_name || article.fullName || "",
@@ -372,6 +388,11 @@ function AppRoutes() {
   const [apiCommonNews, setApiCommonNews] = useState([]);
   const [apiDomuNews, setApiDomuNews] = useState([]);
   const [apiEventsNews, setApiEventsNews] = useState([]);
+  const [apiMethodikaNews, setApiMethodikaNews] = useState([]);
+  const [apiNokoNews, setApiNokoNews] = useState([]);
+  const [apiKonkursyNews, setApiKonkursyNews] = useState([]);
+  const [apiDeyatelnostNews, setApiDeyatelnostNews] = useState([]);
+  const [apiArchivNews, setApiArchivNews] = useState([]);
 
   const currentUserFullName = useMemo(() => {
     const fio = [
@@ -428,33 +449,48 @@ function AppRoutes() {
 
   const loadPublicNews = useCallback(async () => {
     try {
-      const [commonRes, domuRes, eventsRes] = await Promise.all([
+      const [commonRes, domuRes, eventsRes, methodikaRes, nokoRes, konkursyRes, deyatelnostRes, archivRes] = await Promise.all([
         fetch(`${API_BASE}/api/news/`),
         fetch(`${API_BASE}/api/dom-uchitelya/news/`),
         fetch(`${API_BASE}/api/events/`),
+        fetch(`${API_BASE}/api/hub/news/?hub=methodika&limit=100`),
+        fetch(`${API_BASE}/api/hub/news/?hub=noko&limit=100`),
+        fetch(`${API_BASE}/api/hub/news/?hub=konkursy&limit=100`),
+        fetch(`${API_BASE}/api/hub/news/?hub=deyatelnost&limit=100`),
+        fetch(`${API_BASE}/api/hub/news/?hub=archiv&limit=100`),
       ]);
-      if (commonRes.ok) {
-        const data = await commonRes.json();
-        setApiCommonNews(removeLegacyDemoArticles(data.items || []).map(apiArticleToNewsItem));
-      } else {
-        setApiCommonNews([]);
-      }
-      if (domuRes.ok) {
-        const data = await domuRes.json();
-        setApiDomuNews(removeLegacyDemoArticles(data.items || []).map(apiArticleToNewsItem));
-      } else {
-        setApiDomuNews([]);
-      }
-      if (eventsRes.ok) {
-        const data = await eventsRes.json();
-        setApiEventsNews(removeLegacyDemoArticles(data.items || []).map(apiArticleToNewsItem));
-      } else {
-        setApiEventsNews([]);
-      }
+      const loadItems = async (response) => {
+        if (!response.ok) return [];
+        const data = await response.json();
+        return removeLegacyDemoArticles(data.items || []).map(apiArticleToNewsItem);
+      };
+      const [common, domu, events, methodika, noko, konkursy, deyatelnost, archiv] = await Promise.all([
+        loadItems(commonRes),
+        loadItems(domuRes),
+        loadItems(eventsRes),
+        loadItems(methodikaRes),
+        loadItems(nokoRes),
+        loadItems(konkursyRes),
+        loadItems(deyatelnostRes),
+        loadItems(archivRes),
+      ]);
+      setApiCommonNews(common);
+      setApiDomuNews(domu);
+      setApiEventsNews(events);
+      setApiMethodikaNews(methodika);
+      setApiNokoNews(noko);
+      setApiKonkursyNews(konkursy);
+      setApiDeyatelnostNews(deyatelnost);
+      setApiArchivNews(archiv);
     } catch {
       setApiCommonNews([]);
       setApiDomuNews([]);
       setApiEventsNews([]);
+      setApiMethodikaNews([]);
+      setApiNokoNews([]);
+      setApiKonkursyNews([]);
+      setApiDeyatelnostNews([]);
+      setApiArchivNews([]);
     }
   }, []);
 
@@ -494,13 +530,22 @@ function AppRoutes() {
   const publishedNews = sortNewsByDateDesc(apiCommonNews);
   const eventsNews = sortNewsByDateDesc(apiEventsNews);
   const domuNews = sortNewsByDateDesc(apiDomuNews);
+  const methodikaNews = sortNewsByDateDesc(apiMethodikaNews);
+  const nokoNews = sortNewsByDateDesc(apiNokoNews);
+  const konkursyNews = sortNewsByDateDesc(apiKonkursyNews);
+  const deyatelnostNews = sortNewsByDateDesc(apiDeyatelnostNews);
+  const archivNews = sortNewsByDateDesc(apiArchivNews);
+  const profileNews = useMemo(
+    () => [...methodikaNews, ...nokoNews, ...konkursyNews, ...deyatelnostNews, ...archivNews],
+    [archivNews, deyatelnostNews, konkursyNews, methodikaNews, nokoNews],
+  );
   const allPublicNews = useMemo(() => {
     const map = new Map();
-    [...publishedNews, ...eventsNews, ...domuNews].forEach((item) => {
+    [...publishedNews, ...eventsNews, ...domuNews, ...profileNews].forEach((item) => {
       if (!map.has(item.id)) map.set(item.id, item);
     });
     return [...map.values()];
-  }, [publishedNews, eventsNews, domuNews]);
+  }, [publishedNews, eventsNews, domuNews, profileNews]);
 
   const openArticle = useCallback((newsItem) => {
     navigate(`/article/${encodeURIComponent(newsItem.slug || newsItem.id)}`, { state: { article: newsItem } });
@@ -568,7 +613,7 @@ function AppRoutes() {
     const { predmetSlug, articleSlug } = useParams();
     const stateArticle = location.state?.article;
     const stateKey = stateArticle ? String(stateArticle.slug || stateArticle.id) : "";
-    const freshArticle = publishedNews.find((item) =>
+    const freshArticle = methodikaNews.find((item) =>
       methodikaSubjectSlug(item.methodika_subject || "") === predmetSlug
       && (
         String(item.slug || item.id) === articleSlug
@@ -754,12 +799,13 @@ function AppRoutes() {
           <Route
             key={page.path}
             path={page.path}
-            element={<Navigate to={page.to} replace />}
+            element={<MethodikaStaticPage {...publicPageProps} page={page} newsItems={methodikaNews} onOpenArticle={openArticle} onOpenAuthor={openAuthor} />}
           />
         ))}
         <Route path="/metodika/" element={<Navigate to="/metodicheskoe-prostranstvo/" replace />} />
         <Route path="/metodika/:predmetSlug/:articleSlug/" element={<MethodikaArticleRoute />} />
-        <Route path="/metodika/:predmetSlug/" element={<Navigate to="/metodicheskoe-prostranstvo/" replace />} />
+        <Route path="/metodika/:predmetSlug/" element={<MethodikaSubjectPage {...publicPageProps} newsItems={methodikaNews} />} />
+        <Route path="/metodicheskoe-prostranstvo/" element={<MethodikaHomePage {...publicPageProps} newsItems={methodikaNews} />} />
         <Route path="/predmetnye-oblasti/*" element={<LegacyPredmetnyeRedirect />} />
 
         <Route path="/noko/" element={<NokoHomePage {...publicPageProps} />} />
@@ -767,14 +813,14 @@ function AppRoutes() {
           <Route
             key={path}
             path={path}
-            element={<SectionRoutePage {...publicPageProps} node={node} newsItems={publishedNews} onOpenArticle={openArticle} />}
+            element={<SectionRoutePage {...publicPageProps} node={node} newsItems={profileNews} onOpenArticle={openArticle} />}
           />
         ))}
         {LEGACY_NOKO_SECTION_ROUTES.map((section) => (
           <Route
             key={section.path}
             path={section.path}
-            element={<NokoSectionPage {...publicPageProps} section={section} newsItems={publishedNews} onOpenArticle={openArticle} onOpenAuthor={openAuthor} />}
+            element={<NokoSectionPage {...publicPageProps} section={section} newsItems={nokoNews} onOpenArticle={openArticle} onOpenAuthor={openAuthor} />}
           />
         ))}
 
@@ -790,7 +836,7 @@ function AppRoutes() {
           <Route
             key={section.path}
             path={section.path}
-            element={<KonkursySectionPage {...publicPageProps} section={section} newsItems={publishedNews} onOpenArticle={openArticle} onOpenAuthor={openAuthor} />}
+            element={<KonkursySectionPage {...publicPageProps} section={section} newsItems={konkursyNews} onOpenArticle={openArticle} onOpenAuthor={openAuthor} />}
           />
         ))}
 
@@ -798,7 +844,7 @@ function AppRoutes() {
           <Route
             key={section.path}
             path={section.path}
-            element={<DeyatelnostSectionPage {...publicPageProps} section={section} newsItems={publishedNews} onOpenArticle={openArticle} onOpenAuthor={openAuthor} />}
+            element={<DeyatelnostSectionPage {...publicPageProps} section={section} newsItems={deyatelnostNews} onOpenArticle={openArticle} onOpenAuthor={openAuthor} />}
           />
         ))}
 
@@ -807,7 +853,7 @@ function AppRoutes() {
           <Route
             key={section.path}
             path={section.path}
-            element={<ArchivSectionPage {...publicPageProps} section={section} newsItems={publishedNews} onOpenArticle={openArticle} onOpenAuthor={openAuthor} />}
+            element={<ArchivSectionPage {...publicPageProps} section={section} newsItems={archivNews} onOpenArticle={openArticle} onOpenAuthor={openAuthor} />}
           />
         ))}
         <Route path="/authors/:authorKey/" element={<AuthorArticlesPage {...publicPageProps} allNews={allPublicNews} onOpenArticle={openArticle} />} />

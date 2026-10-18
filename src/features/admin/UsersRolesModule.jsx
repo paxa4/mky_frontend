@@ -109,6 +109,17 @@ function userSecondaryLine(user) {
   return user?.email || "Контакты не указаны";
 }
 
+function formatActivityRows(items) {
+  return (Array.isArray(items) ? items : []).map((item) => ({
+    id: item.id,
+    time: item.created_at ? new Date(item.created_at).toLocaleString("ru-RU") : "—",
+    user: item.user_name || item.user_email || "Система",
+    action: item.action,
+    section: item.entity_type || "Система",
+    status: "Успешно",
+  }));
+}
+
 function accessSummary(permissions) {
   const hasFullAccess = ["articles", "certificates", "certificate_templates", "users_roles"].every(
     (key) => permissions[key] === "edit",
@@ -202,12 +213,7 @@ export default function UsersRolesModule({ currentUser }) {
   const permissionsDirty = savedPermissionsKey !== draftPermissionsKey;
   const _selectedRoleDetails = roleDetails(selectedRole);
   const selectedRoleUsers = users.filter((user) => roleName(user) === selectedRole).length;
-  const demoActivityRows = useMemo(() => ([
-    { id: "demo-role", time: "Сегодня, 10:12", user: "Марина Кузнецова", action: "Изменение роли пользователя", section: "Пользователи", status: "Успешно" },
-    { id: "demo-article", time: "Сегодня, 09:34", user: "Ирина Абрамова", action: "Создание статьи", section: "Статьи", status: "Успешно" },
-    { id: "demo-template", time: "Вчера, 16:05", user: "Администратор", action: "Обновление шаблона грамоты", section: "Выпуск грамот", status: "Успешно" },
-  ]), []);
-  const activityRows = activityLog.length > 0 ? activityLog : demoActivityRows;
+  const activityRows = activityLog;
 
   const permissionsForRole = useCallback(
     (roleNameValue) => {
@@ -239,6 +245,12 @@ export default function UsersRolesModule({ currentUser }) {
       const normalizedRoles = Array.isArray(loadedRoles) ? loadedRoles : [];
       setUsers(Array.isArray(loadedUsers) ? loadedUsers : []);
       setRoles(normalizedRoles);
+      const activityResponse = await fetch(`${API_BASE}/audit-log/?limit=5`, { headers: authHeaders() });
+      if (activityResponse.ok) {
+        setActivityLog(formatActivityRows(await activityResponse.json()));
+      } else {
+        setActivityLog([]);
+      }
       setSelectedRole((prev) => {
         if (normalizedRoles.some((role) => role.role_name === prev)) return prev;
         return sortRoles(normalizedRoles)[0]?.role_name || "user";
@@ -829,7 +841,7 @@ export default function UsersRolesModule({ currentUser }) {
             <div className="ur-card-head">
               <h3>Последние действия</h3>
             </div>
-            {!activityLog.length && <div className="ur-empty compact">Реальных действий в текущей сессии пока нет. Ниже показан пример журнала.</div>}
+            {!activityLog.length && <div className="ur-empty compact">Сохранённых действий пока нет.</div>}
             <table className="ur-activity-table">
               <thead>
                 <tr>

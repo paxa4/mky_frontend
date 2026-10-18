@@ -68,24 +68,6 @@ const TPMPK_APPOINTMENT_ACTION = {
   href: "/tpmpk/zapis",
 };
 
-const NOKO_NEWS_ITEMS = [
-  {
-    date: "24.08.2024",
-    title: "Опубликованы новые методические рекомендации по НОКО",
-    href: "/novosti/",
-  },
-  {
-    date: "26.08.2024",
-    title: "Вебинар: «Анализ результатов НОКО за первый квартал»",
-    href: "/novosti/",
-  },
-  {
-    date: "29.08.2024",
-    title: "Обновление статистических данных по качеству образования",
-    href: "/novosti/",
-  },
-];
-
 const NOKO_MATERIAL_CARDS = [
   {
     title: "Оперативная информация",
@@ -149,11 +131,6 @@ export const NOKO_HUB_HOME_CONFIG = {
   ctaText: "Перейти",
   description: "Раздел НОКО: оперативная информация, материалы ГИА и тематические сборники для педагогов и руководителей.",
   gridClassName: "imcro-grid-4",
-  latestNews: {
-    title: "Последние новости",
-    items: NOKO_NEWS_ITEMS,
-    allHref: "/novosti/",
-  },
   mainClassName: "noko-main",
   pageClassName: "noko-page",
   sectionTitle: "Материалы и разделы",
@@ -164,26 +141,6 @@ function findRootSection(path) {
   const normalizedPath = normalizePath(path);
   if (EXTERNAL_ROOT_SECTIONS[normalizedPath]) return EXTERNAL_ROOT_SECTIONS[normalizedPath];
   return SECTION_TREE.find((section) => section.path === normalizedPath);
-}
-
-function createLatestMaterials(section) {
-  return [
-    {
-      date: "02.09.2024",
-      title: `Обновлены материалы раздела «${section.title}»`,
-      href: "/novosti/",
-    },
-    {
-      date: "09.09.2024",
-      title: `Подготовлены рекомендации для направления «${section.title}»`,
-      href: "/novosti/",
-    },
-    {
-      date: "16.09.2024",
-      title: `Опубликована организационная информация раздела «${section.title}»`,
-      href: "/novosti/",
-    },
-  ];
 }
 
 function createContacts(section) {
@@ -236,11 +193,6 @@ function createHubHomeConfig(section) {
     ctaText: "Перейти",
     description: section.description,
     gridClassName: cards.length > 3 ? "imcro-grid-4" : "imcro-grid-3",
-    latestNews: {
-      title: "Последние материалы",
-      items: createLatestMaterials(section),
-      allHref: "/novosti/",
-    },
     sectionTitle: cards.length ? "Материалы и разделы" : "",
     title: section.title,
   };
