@@ -1,4 +1,4 @@
-import { DEYATELNOST_ROUTES } from "../../features/admin/articleTaxonomy.js";
+import { DEYATELNOST_ROUTES, KONKURSY_ROUTES } from "../../features/admin/articleTaxonomy.js";
 import { DOMU_SECTIONS } from "../domUchitelya/domuSections.js";
 import { SECTION_TREE, normalizePath } from "../sections/sectionStructure.js";
 
@@ -25,9 +25,9 @@ const HUB_HOME_SECTION_PATHS = [
 ];
 
 const DEYATELNOST_CARD_PATHS = {
-  innovacii: "/innovacionnaya-deyatelnost/",
-  "povyshenie-kvalifikatsii": "/kpk/",
-  vospitanie: "/vospitatelnoe-prostranstvo/",
+  innovacii: "/deyatelnost/innovacii/",
+  "povyshenie-kvalifikatsii": "/deyatelnost/povyshenie-kvalifikatsii/",
+  vospitanie: "/deyatelnost/vospitanie/",
 };
 
 const EXTERNAL_ROOT_SECTIONS = {
@@ -59,6 +59,18 @@ const EXTERNAL_ROOT_SECTIONS = {
         proforientaciya: "compass",
         vospitanie: "people",
       }[section.value] || "compass",
+    })),
+  },
+  "/konkursy/": {
+    title: "Олимпиады и конкурсы",
+    path: "/konkursy/",
+    icon: "trophy",
+    description: "Олимпиады, конкурсы, конференции и материалы для обучающихся, педагогов и организаций.",
+    children: KONKURSY_ROUTES.map((section) => ({
+      title: section.title,
+      path: section.path,
+      description: section.lead,
+      icon: "trophy",
     })),
   },
 };

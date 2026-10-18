@@ -3,11 +3,11 @@ import {
   DEYATELNOST_SECTIONS,
   DOMU_SECTIONS,
   KONKURSY_SECTIONS,
-  METHODIKA_SECTIONS,
   METHODIKA_SUBJECTS,
   NOKO_SECTIONS,
   ROOT_SECTIONS,
 } from "./articleTaxonomy.js";
+import { SECTION_TREE, normalizePath } from "../../pages/sections/sectionStructure.js";
 
 const ROOT_LABELS = {
   home: "Новости",
@@ -39,6 +39,25 @@ function branchFromOptions(root, label, options, rootKey = `${root}:root`, keyPr
   return node(rootKey, label, optionNodes(root, options, keyPrefix), { root, value: "root" });
 }
 
+function publicPageNode(section) {
+  const path = normalizePath(section.path);
+  return node(`page:${path}`, section.title, (section.children || []).map(publicPageNode), {
+    root: "page",
+    value: path,
+    path,
+  });
+}
+
+function publicPageGroup(rootPath, label) {
+  const root = SECTION_TREE.find((section) => section.path === rootPath);
+  if (!root?.children?.length) return null;
+  return node(`page-group:${rootPath}`, label || root.title, root.children.map(publicPageNode), {
+    selectable: false,
+    root: "page",
+    value: rootPath,
+  });
+}
+
 function methodikaBranch(allowedSubjects = METHODIKA_SUBJECTS) {
   return node("methodika:root", ROOT_LABELS.methodika, [
     node("methodika_subjects:group", "Предметы", allowedSubjects.map((subject) => node(`methodika_subject:${subject}`, subject, [], {
@@ -46,9 +65,23 @@ function methodikaBranch(allowedSubjects = METHODIKA_SUBJECTS) {
       value: subject,
       kind: "subject",
     })), { selectable: false }),
-    node("methodika_sections:group", "Разделы", optionNodes("methodika", METHODIKA_SECTIONS, "methodika_section"), { selectable: false }),
+    publicPageGroup("/metodicheskoe-prostranstvo/", "Профильные страницы"),
   ], { root: "methodika", value: "root" });
 }
+
+const PAGE_GROUP_ROOTS = [
+  ["/noko/", "НОКО"],
+  ["/molodye-pedagogi/", "Молодые педагоги"],
+  ["/kpk/", "Курсы повышения квалификации"],
+  ["/nastavnichestvo/", "Наставничество"],
+  ["/nsu-skip/", "НСУ и школьные инициативы"],
+  ["/olimpiady-dlya-detey/", "Олимпиады для детей"],
+  ["/konferencii-dlya-detey/", "Конференции для детей"],
+  ["/obrazovatelnye-sobytiya/", "Образовательные события"],
+  ["/poleznaya-informaciya/", "Полезная информация"],
+  ["/innovacionnaya-deyatelnost/", "Инновационная деятельность"],
+  ["/vospitatelnoe-prostranstvo/", "Воспитательное пространство"],
+];
 
 export function buildArticleSectionTree({ allowedSubjects = METHODIKA_SUBJECTS, isDomuMode = false } = {}) {
   const tree = [
@@ -60,6 +93,10 @@ export function buildArticleSectionTree({ allowedSubjects = METHODIKA_SUBJECTS, 
     branchFromOptions("konkursy", ROOT_LABELS.konkursy, KONKURSY_SECTIONS),
     branchFromOptions("deyatelnost", ROOT_LABELS.deyatelnost, DEYATELNOST_SECTIONS),
     branchFromOptions("archiv", ROOT_LABELS.archiv, ARCHIV_SECTIONS),
+    node("profile-pages:root", "Другие профильные разделы", PAGE_GROUP_ROOTS.flatMap(([path, label]) => {
+      const group = publicPageGroup(path, label);
+      return group ? [group] : [];
+    }), { selectable: false, root: "page", value: "profile" }),
   ];
   return isDomuMode ? tree.filter((item) => item.key === "domu:root") : tree;
 }
@@ -158,6 +195,11 @@ function legacyFieldsFromKeys(keys) {
     hub_path: "",
   };
 
+  const domuKey = keys.find((key) => key.startsWith("domu:") && key !== "domu:root");
+  const nokoKey = keys.find((key) => key.startsWith("noko:") && key !== "noko:root");
+  if (domuKey) next.dom_uchitelya_section = domuKey.replace("domu:", "");
+  if (nokoKey) next.noko_section = nokoKey.replace("noko:", "");
+
   if (primary.startsWith("domu:") && primary !== "domu:root") next.dom_uchitelya_section = primary.replace("domu:", "");
   if (primary.startsWith("methodika_subject:")) next.methodika_subject = primary.replace("methodika_subject:", "");
   if (primary.startsWith("methodika_section:")) {
@@ -177,7 +219,10 @@ function legacyFieldsFromKeys(keys) {
 
 function scopeFromKeys(keys, currentScope = "imcro_only", allowedScopes = ["imcro_only", "dom_uchitelya_only", "both"]) {
   const hasDomu = keys.some((key) => key.startsWith("domu:"));
-  const preferred = hasDomu && keys.length === 1 ? "dom_uchitelya_only" : currentScope || "imcro_only";
+  const hasNonDomu = keys.some((key) => !key.startsWith("domu:"));
+  const preferred = hasDomu
+    ? (hasNonDomu ? "both" : "dom_uchitelya_only")
+    : currentScope || "imcro_only";
   if (allowedScopes.includes(preferred)) return preferred;
   return allowedScopes[0] || "imcro_only";
 }

@@ -1,6 +1,6 @@
 import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { BrowserRouter, Routes, Route, Navigate, useLocation, useNavigate, useParams } from "react-router-dom";
-import { DOMU_LEGACY_REDIRECTS, DOMU_SECTIONS } from "./pages/domUchitelya/domuSections.js";
+import { DOMU_ARTICLE_SECTIONS, DOMU_LEGACY_REDIRECTS, DOMU_SECTIONS } from "./pages/domUchitelya/domuSections.js";
 import { HUB_HOME_PAGE_ROUTES } from "./pages/hubs/hubHomeConfig.js";
 import { getMethodikaArticleBackPath } from "./pages/hubs/hubUtils.js";
 import { SECTION_PAGE_ROUTES } from "./pages/sections/sectionStructure.js";
@@ -50,6 +50,7 @@ const loadDomUchitelyaPages = () => import("./pages/domUchitelya/DomUchitelyaPag
 const CommonNewsPage = lazyNamed(loadDomUchitelyaPages, "CommonNewsPage");
 const DomUchitelyaNewsPage = lazyNamed(loadDomUchitelyaPages, "DomUchitelyaNewsPage");
 const DomUchitelyaStaticPage = lazyNamed(loadDomUchitelyaPages, "DomUchitelyaStaticPage");
+const DomUchitelyaArticleSectionPage = lazyNamed(loadDomUchitelyaPages, "DomUchitelyaArticleSectionPage");
 
 const loadHubPages = () => import("./pages/hubs/HubPages.jsx");
 const ArchivHomePage = lazyNamed(loadHubPages, "ArchivHomePage");
@@ -214,9 +215,7 @@ const LEGACY_NOKO_SECTION_ROUTES = NOKO_ROUTES.filter((section) => (
 
 const LEGACY_METHODIKA_REDIRECTS = METHODIKA_STATIC_PAGES.map((page) => ({
   path: page.path,
-  to: page.path.includes("/rekomendacii/")
-    ? "/metodicheskoe-prostranstvo/metodicheskie-materialy/"
-    : "/metodicheskoe-prostranstvo/",
+  to: "/metodicheskoe-prostranstvo/metodicheskie-materialy/",
 }));
 
 const LEGACY_PREDMETNYE_REDIRECTS = {
@@ -389,6 +388,7 @@ function AppRoutes() {
   const [apiDomuNews, setApiDomuNews] = useState([]);
   const [apiEventsNews, setApiEventsNews] = useState([]);
   const [apiMethodikaNews, setApiMethodikaNews] = useState([]);
+  const [apiProfileNews, setApiProfileNews] = useState([]);
   const [apiNokoNews, setApiNokoNews] = useState([]);
   const [apiKonkursyNews, setApiKonkursyNews] = useState([]);
   const [apiDeyatelnostNews, setApiDeyatelnostNews] = useState([]);
@@ -449,10 +449,11 @@ function AppRoutes() {
 
   const loadPublicNews = useCallback(async () => {
     try {
-      const [commonRes, domuRes, eventsRes, methodikaRes, nokoRes, konkursyRes, deyatelnostRes, archivRes] = await Promise.all([
+      const [commonRes, domuRes, eventsRes, profileRes, methodikaRes, nokoRes, konkursyRes, deyatelnostRes, archivRes] = await Promise.all([
         fetch(`${API_BASE}/api/news/`),
         fetch(`${API_BASE}/api/dom-uchitelya/news/`),
         fetch(`${API_BASE}/api/events/`),
+        fetch(`${API_BASE}/api/profile/news/?limit=200`),
         fetch(`${API_BASE}/api/hub/news/?hub=methodika&limit=100`),
         fetch(`${API_BASE}/api/hub/news/?hub=noko&limit=100`),
         fetch(`${API_BASE}/api/hub/news/?hub=konkursy&limit=100`),
@@ -464,10 +465,11 @@ function AppRoutes() {
         const data = await response.json();
         return removeLegacyDemoArticles(data.items || []).map(apiArticleToNewsItem);
       };
-      const [common, domu, events, methodika, noko, konkursy, deyatelnost, archiv] = await Promise.all([
+      const [common, domu, events, profile, methodika, noko, konkursy, deyatelnost, archiv] = await Promise.all([
         loadItems(commonRes),
         loadItems(domuRes),
         loadItems(eventsRes),
+        loadItems(profileRes),
         loadItems(methodikaRes),
         loadItems(nokoRes),
         loadItems(konkursyRes),
@@ -477,6 +479,7 @@ function AppRoutes() {
       setApiCommonNews(common);
       setApiDomuNews(domu);
       setApiEventsNews(events);
+      setApiProfileNews(profile);
       setApiMethodikaNews(methodika);
       setApiNokoNews(noko);
       setApiKonkursyNews(konkursy);
@@ -486,6 +489,7 @@ function AppRoutes() {
       setApiCommonNews([]);
       setApiDomuNews([]);
       setApiEventsNews([]);
+      setApiProfileNews([]);
       setApiMethodikaNews([]);
       setApiNokoNews([]);
       setApiKonkursyNews([]);
@@ -536,8 +540,14 @@ function AppRoutes() {
   const deyatelnostNews = sortNewsByDateDesc(apiDeyatelnostNews);
   const archivNews = sortNewsByDateDesc(apiArchivNews);
   const profileNews = useMemo(
-    () => [...methodikaNews, ...nokoNews, ...konkursyNews, ...deyatelnostNews, ...archivNews],
-    [archivNews, deyatelnostNews, konkursyNews, methodikaNews, nokoNews],
+    () => {
+      const map = new Map();
+      [...apiProfileNews, ...methodikaNews, ...nokoNews, ...konkursyNews, ...deyatelnostNews, ...archivNews].forEach((item) => {
+        if (!map.has(item.id)) map.set(item.id, item);
+      });
+      return [...map.values()];
+    },
+    [apiProfileNews, archivNews, deyatelnostNews, konkursyNews, methodikaNews, nokoNews],
   );
   const allPublicNews = useMemo(() => {
     const map = new Map();
@@ -785,7 +795,14 @@ function AppRoutes() {
         <Route path="/novosti/" element={<CommonNewsPage {...publicPageProps} newsItems={publishedNews} onOpenArticle={openArticle} onOpenAuthor={openAuthor} />} />
         <Route path="/bezopasnost/" element={<SafetyPage {...publicPageProps} />} />
         <Route path="/dom-uchitelya/novosti/" element={<DomUchitelyaNewsPage {...publicPageProps} newsItems={domuNews} onOpenArticle={openArticle} onOpenAuthor={openAuthor} />} />
-        {DOMU_SECTIONS.filter((section) => section.path !== "/dom-uchitelya/novosti/").map((section) => (
+        {DOMU_ARTICLE_SECTIONS.map((section) => (
+          <Route
+            key={section.path}
+            path={section.path}
+            element={<DomUchitelyaArticleSectionPage {...publicPageProps} section={section} newsItems={domuNews} onOpenArticle={openArticle} onOpenAuthor={openAuthor} />}
+          />
+        ))}
+        {DOMU_SECTIONS.filter((section) => section.path !== "/dom-uchitelya/novosti/" && !DOMU_ARTICLE_SECTIONS.some((articleSection) => articleSection.path === section.path)).map((section) => (
           <Route key={section.path} path={section.path} element={<DomUchitelyaStaticPage {...publicPageProps} section={section} />} />
         ))}
         {DOMU_LEGACY_REDIRECTS.map((route) => (

@@ -19,6 +19,17 @@ test("builds a searchable tree with full section paths", () => {
   assert.ok(flat.some((section) => section.key === "events" && section.pathLabel === "Мероприятия"));
 });
 
+test("uses canonical public paths for profile sections", () => {
+  const flat = flattenArticleSections(buildArticleSectionTree());
+  const methodical = flat.find((section) => section.key === "page:/metodicheskoe-prostranstvo/metodicheskie-materialy/");
+
+  assert.equal(methodical.label, "Методические материалы");
+
+  const next = applyArticleSectionSelection({}, [methodical.key]);
+  assert.equal(next.sections[0].root, "page");
+  assert.equal(next.sections[0].value, "/metodicheskoe-prostranstvo/metodicheskie-materialy/");
+});
+
 test("derives selected sections from legacy article fields", () => {
   const selection = getArticleSectionSelection({
     noko_section: "gia-9",
@@ -38,6 +49,17 @@ test("applies multiple selected sections without duplicating keys", () => {
   assert.equal(next.noko_section, "gia-9");
   assert.equal(next.duplicate_to_events, true);
   assert.equal(next.duplicate_to_main, false);
+});
+
+test("uses both publication scopes for mixed Dom teacher and IMCRO placement", () => {
+  const next = applyArticleSectionSelection(
+    { publishing_scope: "imcro_only" },
+    ["domu:master-klassy", "noko:gia-9"],
+  );
+
+  assert.equal(next.publishing_scope, "both");
+  assert.equal(next.dom_uchitelya_section, "master-klassy");
+  assert.equal(next.noko_section, "gia-9");
 });
 
 test("returns compact chips with full paths and overflow count", () => {

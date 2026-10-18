@@ -235,6 +235,8 @@ function isHomePlacement(article) {
 }
 
 function sectionPinKey(article) {
+  const pageKey = getArticleSectionSelection(article).find((key) => key.startsWith("page:"));
+  if (pageKey) return pageKey;
   if (article.dom_uchitelya_section) return `domu:${article.dom_uchitelya_section}`;
   if (article.methodika_subject) return `methodika_subject:${article.methodika_subject}`;
   if (article.hub_kind === "methodika" && article.hub_path) return `methodika_section:${article.hub_path}`;

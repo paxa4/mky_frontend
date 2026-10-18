@@ -109,13 +109,55 @@ function userSecondaryLine(user) {
   return user?.email || "Контакты не указаны";
 }
 
+const AUDIT_FIELD_LABELS = {
+  email: "Email",
+  last_name: "Фамилия",
+  first_name: "Имя",
+  middle_name: "Отчество",
+  role: "Роль",
+  is_active: "Статус",
+  allowed_methodika_subjects: "Доступные предметы",
+};
+
+const AUDIT_PERMISSION_LABELS = {
+  none: "Запрещено",
+  view: "Просмотр",
+  edit: "Изменение",
+};
+
+function auditValue(value, field) {
+  if (field === "role") return getRoleLabel(value || "user");
+  if (field === "is_active") return value ? "Активен" : "Заблокирован";
+  if (field === "allowed_methodika_subjects") return Array.isArray(value) && value.length ? value.join(", ") : "Нет";
+  if (value === null || value === undefined || value === "") return "нет";
+  return String(value);
+}
+
+function formatAuditDetails(item) {
+  const details = item?.details || {};
+  if (Array.isArray(details.changes) && details.changes.length) {
+    return details.changes.map((change) => {
+      if (change.module) {
+        const module = MODULE_DEFINITIONS.find((definition) => definition.key === change.module);
+        return `${module?.label || change.module}: ${AUDIT_PERMISSION_LABELS[change.from] || "нет"} -> ${AUDIT_PERMISSION_LABELS[change.to] || "нет"}`;
+      }
+      const label = AUDIT_FIELD_LABELS[change.field] || change.field;
+      return `${label}: ${auditValue(change.from, change.field)} → ${auditValue(change.to, change.field)}`;
+    }).join("; ");
+  }
+  if (details.role) return `Роль: ${getRoleLabel(details.role)}`;
+  if (details.email) return `Email: ${details.email}`;
+  return "Без дополнительных деталей";
+}
+
 function formatActivityRows(items) {
   return (Array.isArray(items) ? items : []).map((item) => ({
     id: item.id,
     time: item.created_at ? new Date(item.created_at).toLocaleString("ru-RU") : "—",
     user: item.user_name || item.user_email || "Система",
     action: item.action,
-    section: item.entity_type || "Система",
+    section: item.entity_type === "role" ? "Роли" : "Пользователи",
+    details: formatAuditDetails(item),
     status: "Успешно",
   }));
 }
@@ -245,7 +287,7 @@ export default function UsersRolesModule({ currentUser }) {
       const normalizedRoles = Array.isArray(loadedRoles) ? loadedRoles : [];
       setUsers(Array.isArray(loadedUsers) ? loadedUsers : []);
       setRoles(normalizedRoles);
-      const activityResponse = await fetch(`${API_BASE}/audit-log/?limit=5`, { headers: authHeaders() });
+      const activityResponse = await fetch(`${API_BASE}/audit-log/?limit=100&entity_type=user&entity_type=role`, { headers: authHeaders() });
       if (activityResponse.ok) {
         setActivityLog(formatActivityRows(await activityResponse.json()));
       } else {
@@ -849,6 +891,7 @@ export default function UsersRolesModule({ currentUser }) {
                   <th>Объект</th>
                   <th>Действие</th>
                   <th>Раздел</th>
+                  <th>Детали</th>
                   <th>Статус</th>
                 </tr>
               </thead>
@@ -859,6 +902,7 @@ export default function UsersRolesModule({ currentUser }) {
                     <td>{item.user}</td>
                     <td>{item.action}</td>
                     <td>{item.section}</td>
+                    <td>{item.details}</td>
                     <td><span className="ur-status active">{item.status}</span></td>
                   </tr>
                 ))}

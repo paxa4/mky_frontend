@@ -3,7 +3,7 @@ import Footer from "../../components/Footer.jsx";
 import Header from "../../features/nav/Header.jsx";
 import Breadcrumbs from "../../components/Breadcrumbs.jsx";
 import NewsCard from "../../features/news/NewsCard.jsx";
-import { DOMU_SECTIONS } from "./domuSections.js";
+import { DOMU_ARTICLE_SECTIONS, DOMU_SECTIONS } from "./domuSections.js";
 
 const contactCards = [
   { label: "Адрес", value: "ул. Литвинова, 14" },
@@ -177,6 +177,35 @@ export function DomUchitelyaStaticPage({ section, ...props }) {
             {copy.items.map(item => <li key={item}>{item}</li>)}
           </ul>
         </section>
+      </div>
+    </DomuShell>
+  );
+}
+
+function hasDomuSection(item, value) {
+  return item?.dom_uchitelya_section === value
+    || (Array.isArray(item?.sections) && item.sections.some((entry) => (
+      (typeof entry === "string" ? entry : entry?.key) === "domu:" + value
+    )));
+}
+
+export function DomUchitelyaArticleSectionPage({ section, newsItems = [], ...props }) {
+  const news = newsItems.filter((item) => hasDomuSection(item, section.value));
+  return (
+    <DomuShell {...props}>
+      <div className="domu-shell">
+        <Breadcrumbs items={[{ label: "Главная", to: "/" }, { label: "Дом учителя", to: "/dom-uchitelya/" }, { label: section.title }]} />
+        <section className="domu-content" style={{ marginBottom: 22 }}>
+          <span className="domu-eyebrow">Дом учителя</span>
+          <h1>{section.title}</h1>
+          <p className="domu-lead">{section.text}</p>
+        </section>
+        <div className="domu-news-grid">
+          {news.map((item) => (
+            <NewsCard key={item.id} news={item} onClick={() => props.onOpenArticle?.(item)} onAuthorClick={props.onOpenAuthor} />
+          ))}
+        </div>
+        {!news.length && <div className="domu-empty">В этом разделе пока нет опубликованных материалов.</div>}
       </div>
     </DomuShell>
   );

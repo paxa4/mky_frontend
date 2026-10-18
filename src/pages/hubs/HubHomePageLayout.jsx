@@ -93,6 +93,34 @@ export function HubHomeIcon({ name }) {
           <path d="M19.5 19v-1c0-1.2-1.1-2.2-2.7-2.8" />
         </svg>
       );
+    case "presentation":
+      return (
+        <svg viewBox="0 0 24 24" aria-hidden="true" {...common}>
+          <path d="M4 4h16v11H4z" />
+          <path d="M12 15v6" />
+          <path d="M8 21h8" />
+          <path d="m8 11 2.5-2.5L13 11l3-3" />
+        </svg>
+      );
+    case "trophy":
+      return (
+        <svg viewBox="0 0 24 24" aria-hidden="true" {...common}>
+          <path d="M8 4h8v4a4 4 0 0 1-8 0V4Z" />
+          <path d="M8 6H4v1a4 4 0 0 0 4 4" />
+          <path d="M16 6h4v1a4 4 0 0 1-4 4" />
+          <path d="M12 12v5" />
+          <path d="M8 21h8" />
+          <path d="M9 17h6" />
+        </svg>
+      );
+    case "image":
+      return (
+        <svg viewBox="0 0 24 24" aria-hidden="true" {...common}>
+          <rect x="4" y="4" width="16" height="16" rx="1" />
+          <circle cx="9" cy="9" r="1.5" />
+          <path d="m5 17 4-4 3 3 2-2 5 5" />
+        </svg>
+      );
     case "psychology":
       return (
         <svg viewBox="0 0 24 24" aria-hidden="true" {...common}>

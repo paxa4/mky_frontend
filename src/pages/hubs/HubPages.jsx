@@ -7,11 +7,11 @@ import {
   ARCHIV_ROUTES,
   DEYATELNOST_ROUTES,
   KONKURSY_ROUTES,
-  METHODIKA_STATIC_PAGES,
   METHODIKA_SUBJECT_CARDS,
   NOKO_ROUTES,
   methodikaSubjectBySlug,
 } from "../../features/admin/articleTaxonomy.js";
+import { SECTION_TREE } from "../sections/sectionStructure.js";
 import { HubHomePageLayout } from "./HubHomePageLayout.jsx";
 import { NOKO_HUB_HOME_CONFIG } from "./hubHomeConfig.js";
 
@@ -145,6 +145,7 @@ function HubSectionLayout({ title, lead, homePath, homeLabel, children, heroClas
 }
 
 export function MethodikaHomePage({ newsItems = [], ...props }) {
+  const methodikaRoot = SECTION_TREE.find((section) => section.path === "/metodicheskoe-prostranstvo/");
   const cards = METHODIKA_SUBJECT_CARDS.map((subject) => {
     const related = newsItems.filter((item) => item.methodika_subject === subject.name);
     return { subject, related };
@@ -172,13 +173,13 @@ export function MethodikaHomePage({ newsItems = [], ...props }) {
           ))}
         </div>
         <div className="hub-section-head">
-          <h2>Дополнительные разделы</h2>
+          <h2>Профильные направления</h2>
         </div>
         <div className="hub-grid">
-          {METHODIKA_STATIC_PAGES.map((page) => (
+          {(methodikaRoot?.children || []).map((page) => (
             <Link key={page.path} className="hub-card hub-link" to={page.path}>
               <h3>{page.title}</h3>
-              <p>{page.lead}</p>
+              <p>{page.description}</p>
               <span className="hub-open">Открыть</span>
             </Link>
           ))}
@@ -251,10 +252,17 @@ function GenericHubHome({ eyebrow, title, lead, sections, ...props }) {
   );
 }
 
+function hasStoredSectionKey(item, key) {
+  return Array.isArray(item?.sections) && item.sections.some((section) => (
+    (typeof section === "string" ? section : section?.key) === key
+  ));
+}
+
 function GenericHubSection({ homePath, homeLabel, section, newsItems = [], kind, sectionField = "hub_path", ...props }) {
   const items = newsItems.filter((item) => {
-    if (kind === "noko") return item.noko_section === section.value;
-    return item.hub_kind === kind && item[sectionField] === section.value;
+    const selectedKey = `${kind}:${section.value}`;
+    if (kind === "noko") return item.noko_section === section.value || hasStoredSectionKey(item, selectedKey);
+    return (item.hub_kind === kind && item[sectionField] === section.value) || hasStoredSectionKey(item, selectedKey);
   });
   return (
     <HubSectionLayout {...props} homePath={homePath} homeLabel={homeLabel} title={section.title} lead={section.lead}>

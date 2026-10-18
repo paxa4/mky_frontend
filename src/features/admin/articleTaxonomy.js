@@ -1,4 +1,6 @@
 import { generateSlug } from "./adminStore.js";
+import { findSectionByPath } from "../../pages/sections/sectionStructure.js";
+import { DOMU_ARTICLE_SECTIONS } from "../../pages/domUchitelya/domuSections.js";
 
 export const METHODIKA_SUBJECTS = [
   "Астрономия",
@@ -38,17 +40,7 @@ export const METHODIKA_SUBJECT_CARDS = METHODIKA_SUBJECTS.map((name) => ({
   methodist: "Методист ИМЦРО",
 }));
 
-export const DOMU_SECTIONS = [
-  { value: "master-klassy", label: "Мастер-классы" },
-  { value: "molodye-pedagogi", label: "Клуб молодых педагогов" },
-  { value: "nastavnichestvo", label: "Наставничество" },
-  { value: "klub-pedagogov", label: "Клуб педагогов" },
-  { value: "pedagogicheskaya-gostinaya", label: "Педагогическая гостиная" },
-  { value: "konkursy", label: "Конкурсы" },
-  { value: "itogi", label: "Итоги и результаты" },
-  { value: "fotogalereya", label: "Фотогалерея" },
-  { value: "programma", label: "Программа мероприятий" },
-];
+export const DOMU_SECTIONS = DOMU_ARTICLE_SECTIONS.map(({ value, title }) => ({ value, label: title }));
 
 export const NOKO_SECTIONS = [
   { value: "operativnaya-informaciya", label: "Оперативная информация" },
@@ -110,6 +102,11 @@ function findRoute(routes, value) {
   return routes.find((item) => item.value === value) || null;
 }
 
+const LEGACY_METHODIKA_PUBLIC_PATHS = {
+  "methodicheskiy-sovet": "/metodicheskoe-prostranstvo/metodicheskie-materialy/",
+  rekomendacii: "/metodicheskoe-prostranstvo/metodicheskie-materialy/",
+};
+
 function storedSectionEntries(article) {
   return Array.isArray(article?.sections)
     ? article.sections
@@ -119,7 +116,12 @@ function storedSectionEntries(article) {
 }
 
 function firstStoredSection(article) {
-  return storedSectionEntries(article)[0] || null;
+  const sections = storedSectionEntries(article);
+  return sections.find((section) => !String(section.key).endsWith(":root")) || sections[0] || null;
+}
+
+function firstPublicPageSection(article) {
+  return storedSectionEntries(article).find((section) => String(section.key).startsWith("page:")) || null;
 }
 
 function isGeneratedSectionMeta(key, value) {
@@ -135,13 +137,14 @@ function labelFromStoredSectionKey(key) {
   if (key.startsWith("konkursy:")) return findRoute(KONKURSY_ROUTES, value)?.title || findLabel(KONKURSY_SECTIONS, value);
   if (key.startsWith("deyatelnost:")) return findRoute(DEYATELNOST_ROUTES, value)?.title || findLabel(DEYATELNOST_SECTIONS, value);
   if (key.startsWith("archiv:")) return findRoute(ARCHIV_ROUTES, value)?.title || findLabel(ARCHIV_SECTIONS, value);
+  if (key.startsWith("page:")) return findSectionByPath(value)?.title || value;
   return "";
 }
 
 export function resolveArticleSectionLabel(article, { forceNews = false } = {}) {
   if (!article) return "Новости";
   if (forceNews || article.duplicate_to_main) return "Новости";
-  const storedSection = firstStoredSection(article);
+  const storedSection = firstPublicPageSection(article) || firstStoredSection(article);
   if (storedSection) {
     if (!isGeneratedSectionMeta(storedSection.key, storedSection.path)) return storedSection.path;
     if (!isGeneratedSectionMeta(storedSection.key, storedSection.label)) return storedSection.label;
@@ -155,6 +158,8 @@ export function resolveArticleSectionLabel(article, { forceNews = false } = {}) 
   if (article.hub_kind === "konkursy") return findLabel(KONKURSY_SECTIONS, article.hub_path || "konkursy");
   if (article.hub_kind === "deyatelnost") return findLabel(DEYATELNOST_SECTIONS, article.hub_path || "deyatelnost");
   if (article.hub_kind === "archiv") return findLabel(ARCHIV_SECTIONS, article.hub_path || "archiv");
+  const pageSection = firstPublicPageSection(article);
+  if (pageSection) return labelFromStoredSectionKey(pageSection.key);
   return "Новости";
 }
 
@@ -206,7 +211,7 @@ export function resolveArticleLocation(article) {
   if (!article) {
     return { parentLabel: "Новости", parentPath: "/novosti/", sectionLabel: "", sectionPath: "" };
   }
-  const storedSection = firstStoredSection(article);
+  const storedSection = firstPublicPageSection(article) || firstStoredSection(article);
   if (storedSection) {
     const key = storedSection.key;
     const storedPath = !isGeneratedSectionMeta(key, storedSection.path) ? String(storedSection.path) : "";
@@ -215,11 +220,30 @@ export function resolveArticleLocation(article) {
     const sectionLabel = rest.join(" / ") || storedLabel || labelFromStoredSectionKey(key);
     if (key.startsWith("domu:")) return { parentLabel: parentLabel || "Дом учителя", parentPath: "/dom-uchitelya/", sectionLabel, sectionPath: `/dom-uchitelya/${key.replace("domu:", "").replace("root", "")}/` };
     if (key.startsWith("methodika_subject:")) return { parentLabel: parentLabel || "Методическое пространство", parentPath: "/metodicheskoe-prostranstvo/", sectionLabel, sectionPath: "/metodicheskoe-prostranstvo/" };
-    if (key.startsWith("methodika_section:")) return { parentLabel: parentLabel || "Методическое пространство", parentPath: "/metodicheskoe-prostranstvo/", sectionLabel, sectionPath: "/metodicheskoe-prostranstvo/" };
+    if (key.startsWith("methodika_section:")) {
+      const legacyPath = LEGACY_METHODIKA_PUBLIC_PATHS[key.replace("methodika_section:", "")];
+      const section = legacyPath ? findSectionByPath(legacyPath) : null;
+      return {
+        parentLabel: section?.parentTitle || parentLabel || "Методическое пространство",
+        parentPath: section?.parentPath || "/metodicheskoe-prostranstvo/",
+        sectionLabel: section?.title || sectionLabel,
+        sectionPath: section?.path || "/metodicheskoe-prostranstvo/",
+      };
+    }
     if (key.startsWith("noko:")) return { parentLabel: parentLabel || "НОКО", parentPath: "/noko/", sectionLabel, sectionPath: `/noko/${key.replace("noko:", "").replace("root", "")}/` };
     if (key.startsWith("konkursy:")) return { parentLabel: parentLabel || "Олимпиады и конкурсы", parentPath: "/konkursy/", sectionLabel, sectionPath: `/konkursy/${key.replace("konkursy:", "").replace("root", "")}/` };
     if (key.startsWith("deyatelnost:")) return { parentLabel: parentLabel || "Деятельность", parentPath: "/deyatelnost/", sectionLabel, sectionPath: `/deyatelnost/${key.replace("deyatelnost:", "").replace("root", "")}/` };
     if (key.startsWith("archiv:")) return { parentLabel: parentLabel || "Архив", parentPath: "/archiv/", sectionLabel, sectionPath: `/archiv/${key.replace("archiv:", "").replace("root", "")}/` };
+    if (key.startsWith("page:")) {
+      const publicPath = key.replace("page:", "");
+      const section = findSectionByPath(publicPath);
+      return {
+        parentLabel: section?.parentTitle || section?.rootTitle || parentLabel || "Профильные разделы",
+        parentPath: section?.parentPath || section?.rootPath || "/",
+        sectionLabel: section?.title || sectionLabel,
+        sectionPath: section?.path || publicPath,
+      };
+    }
   }
   if (article.dom_uchitelya_section) {
     return {

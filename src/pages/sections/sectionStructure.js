@@ -69,7 +69,6 @@ const methodicalDirection = (title, slug, description, options = {}) => {
     path,
     description,
     icon: options.icon || "book",
-    cardsOnly: true,
     children: options.children || createStandardSubsections(path),
   };
 };

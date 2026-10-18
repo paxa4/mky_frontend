@@ -31,6 +31,8 @@ function articleMatchesNode(item, node) {
     return true;
   }
 
+  if (itemPaths.length) return false;
+
   const haystack = [
     item?.parentLabel,
     item?.sectionLabel,
@@ -96,7 +98,7 @@ export function SectionRoutePage({ node, newsItems = [], ...props }) {
           parentHref={parentNode?.path || node.rootPath}
           parentTitle={parentNode?.title || node.rootTitle}
           onOpenArticle={handleOpenArticle}
-          showArticleList={!node.cardsOnly}
+          showArticleList={node.showArticleList !== false}
         />
       </main>
       <Footer />
