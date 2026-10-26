@@ -15,6 +15,7 @@ const MAIN_NAV_ITEMS = [
   { label: "Сведения об образовательной организации", href: "/sveden/" },
   { label: "ТПМПК", href: "/tpmpk/" },
   { label: "Дом учителя", href: "/dom-uchitelya/" },
+  { label: "Практики", href: "/praktiki/" },
   { label: "Новости", href: "/novosti/" },
   { label: "Безопасность", href: "/bezopasnost/" },
   { label: "Музей", href: "/deyatelnost/muzey/" },
@@ -220,11 +221,11 @@ export default function Header({ onGoAuth, onGoAdmin, onGoProfile, currentUser }
         }
 
         .site-header-inner {
-          max-width: 1440px;
+          max-width: 1760px;
           margin: 0 auto;
           height: 84px;
           min-width: 0;
-          padding: 0 18px;
+          padding: 0 20px;
           display: grid;
           grid-template-columns: minmax(188px, 240px) minmax(0, 1fr) auto;
           align-items: center;
@@ -258,9 +259,9 @@ export default function Header({ onGoAuth, onGoAdmin, onGoProfile, currentUser }
           min-width: 0;
           display: flex;
           align-items: center;
-          justify-content: center;
+          justify-content: flex-start;
           gap: 3px;
-          overflow: visible;
+          overflow: hidden;
           transition: opacity 0.16s ease, transform 0.2s ease, visibility 0.16s ease;
         }
 
