@@ -7,6 +7,7 @@ import TemplateConstructor from "../components/certificates/TemplateConstructor.
 import AnswerQualityStats from "../components/chat/AnswerQualityStats.jsx";
 import ChatSettings from "../components/chat/ChatSettings.jsx";
 import ArticlesModule from "../features/admin/ArticlesModule.jsx";
+import PracticesModule from "../features/admin/PracticesModule.jsx";
 import AuditLogModule from "../features/admin/AuditLogModule.jsx";
 import PortalSettingsModule from "../features/admin/PortalSettingsModule.jsx";
 import UsersRolesModule from "../features/admin/UsersRolesModule.jsx";
@@ -17,6 +18,7 @@ import { authHeaders, getStoredAccessToken } from "../utils/authHeaders.js";
 const ADMIN_MODULES = [
   { key: "dashboard", path: "/admin/dashboard", label: "Дашборд", icon: "dashboard" },
   { key: "articles", path: "/admin/articles", label: "Статьи", icon: "articles" },
+  { key: "practices", path: "/admin/practices", label: "Каталог практик", icon: "practices" },
   { key: "issue", path: "/admin/certificates", label: "Выпуск грамот", icon: "issue" },
   { key: "editor", path: "/admin/templates", label: "Конструктор шаблонов", icon: "editor" },
   { key: "users", path: "/admin/users", label: "Пользователи и роли", icon: "users" },
@@ -47,6 +49,10 @@ const MODULE_META = {
   articles: {
     title: "Статьи",
     subtitle: "Управление новостями, событиями и информационными материалами портала",
+  },
+  practices: {
+    title: "Каталог практик",
+    subtitle: "Приём, экспертиза и публикация образовательных практик",
   },
   issue: {
     title: "Выпуск грамот",
@@ -489,6 +495,7 @@ export default function AdminPage({ currentUser, onArticlesChanged }) {
   const permissions = useMemo(() => ({
     dashboard: true,
     articles: hasPermission(currentUser, "articles", "view"),
+    practices: hasPermission(currentUser, "articles", "view"),
     issue: hasPermission(currentUser, "certificates", "view"),
     editor: hasPermission(currentUser, "certificate_templates", "view"),
     users: canManageUsers(currentUser),
@@ -568,6 +575,8 @@ export default function AdminPage({ currentUser, onArticlesChanged }) {
         onNewArticle={() => navigate("/admin/articles/new")}
       />
     );
+  } else if (activeKey === "practices") {
+    content = <PracticesModule />;
   } else if (activeKey === "assistant") {
     content = <AssistantModule currentUser={currentUser} view={assistantView} />;
   } else if (activeKey === "users") {

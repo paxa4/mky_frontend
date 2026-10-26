@@ -4,6 +4,7 @@ import { useLocation, useNavigate } from "react-router-dom";
 const ICON_PATHS = {
   dashboard: "M4 4h6v6H4V4Zm10 0h6v6h-6V4ZM4 14h6v6H4v-6Zm10 0h6v6h-6v-6Z",
   articles: "M6 3h12a1 1 0 0 1 1 1v16a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1Zm3 5h6M9 12h6M9 16h4",
+  practices: "M4 6h16M4 12h16M4 18h10M7 3v18m5-18v18m5-18v18",
   issue: "M4 5h16v10H4V5Zm2 12h12M8 15v4m8-4v4",
   editor: "m5 17 4-4m0 0 6-6 2 2-6 6m-2-2 2 2M4 6l3-3 4 4-3 3L4 6Zm13 7 3 3-4 4-3-3",
   chat: "M4 5a3 3 0 0 1 3-3h10a3 3 0 0 1 3 3v7a3 3 0 0 1-3 3H9l-5 4V5Zm5 3h6M9 11h4",

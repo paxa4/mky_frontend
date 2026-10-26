@@ -29,6 +29,9 @@ const AdminPage = lazy(() => import("./pages/AdminPage.jsx"));
 const ArticlePage = lazy(() => import("./pages/ArticlePage.jsx"));
 const AuthorArticlesPage = lazy(() => import("./pages/AuthorArticlesPage.jsx"));
 const ProfilePage = lazy(() => import("./pages/ProfilePage.jsx"));
+const PracticesPage = lazy(() => import("./pages/practices/PracticesPage.jsx"));
+const PracticeDetailPage = lazyNamed(() => import("./pages/practices/PracticesPage.jsx"), "PracticeDetailPage");
+const PracticeSubmitPage = lazyNamed(() => import("./pages/practices/PracticesPage.jsx"), "PracticeSubmitPage");
 const SafetyPage = lazy(() => import("./pages/SafetyPage.jsx"));
 const Smart404 = lazy(() => import("./pages/Smart404.jsx"));
 const TpmpkZapisPage = lazy(() => import("./pages/TpmpkZapisPage.jsx"));
@@ -792,6 +795,9 @@ function AppRoutes() {
           }
         />
         <Route path="/article/:id" element={<ArticleRoute />} />
+        <Route path="/praktiki/" element={<PracticesPage {...publicPageProps} />} />
+        <Route path="/praktiki/podat/" element={<PracticeSubmitPage {...publicPageProps} />} />
+        <Route path="/praktiki/:slug/" element={<PracticeDetailPage {...publicPageProps} />} />
         <Route path="/novosti/" element={<CommonNewsPage {...publicPageProps} newsItems={publishedNews} onOpenArticle={openArticle} onOpenAuthor={openAuthor} />} />
         <Route path="/bezopasnost/" element={<SafetyPage {...publicPageProps} />} />
         <Route path="/dom-uchitelya/novosti/" element={<DomUchitelyaNewsPage {...publicPageProps} newsItems={domuNews} onOpenArticle={openArticle} onOpenAuthor={openAuthor} />} />
