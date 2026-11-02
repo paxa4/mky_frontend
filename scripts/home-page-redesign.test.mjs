@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import { demoFeaturedNews, directions, homeBanners, keyEvents, mainSections } from "../src/pages/homePageData.js";
+import { directions, homeBanners, keyEvents, mainSections } from "../src/pages/homePageData.js";
 
 const homePageSource = readFileSync(new URL("../src/pages/HomePage.jsx", import.meta.url), "utf8");
 const componentsSource = readFileSync(new URL("../src/components/imcro/ImcroPublicComponents.jsx", import.meta.url), "utf8");
@@ -10,7 +10,7 @@ const expectedMainSections = [
   { title: "ГИА", href: "/noko/" },
   { title: "ВСОШ", href: "/olimpiady-dlya-detey/vserossiyskaya-olimpiada-shkolnikov/" },
   { title: "Конкурсы и конференции для педагогов", href: "/konkursy/dlya-pedagogov/" },
-  { title: "Олимпиады и конкурсы для учащихся", href: "/konkursy/dlya-detey/" },
+  { title: "Олимпиады и конкурсы для учащихся", href: "/konkursy/" },
   { title: "Курсы повышения квалификации", href: "/kpk/" },
   { title: "Инновационная деятельность", href: "/innovacionnaya-deyatelnost/" },
   { title: "Методические материалы", href: "/metodicheskoe-prostranstvo/metodicheskie-materialy/" },
@@ -78,8 +78,6 @@ assert.deepEqual(
   expectedDirections,
   "activity carousel follows the approved direction list and routes",
 );
-assert.equal(demoFeaturedNews.title, "Иркутские педагогические чтения: горизонты развития современного образования", "home page exposes the demo featured news");
-assert.equal(demoFeaturedNews.image, "/images/news2.jpg", "demo featured news uses a local public image");
 assert.ok(homeBanners.length >= 10, "home page exposes all local banner files");
 assert.ok(homeBanners.every((item) => item.src.startsWith("/banners/")), "home banners use only local public assets");
 assert.ok(directions.every((item) => item.href?.startsWith("/") && item.href.endsWith("/")), "every activity carousel card has a normalized internal route");
@@ -113,7 +111,7 @@ assert.ok(homePageSource.includes("home-services-grid"), "HomePage has the 9-car
 assert.ok(homePageSource.includes("home-banners-section"), "HomePage renders the local banners section");
 assert.ok(homePageSource.includes('loading="lazy"'), "HomePage lazy-loads banner images");
 assert.ok(homePageSource.includes("home-contact-layout"), "HomePage has the contact layout");
-assert.ok(homePageSource.includes("demoFeaturedNews"), "HomePage uses demo news when no published news are available");
+assert.ok(!homePageSource.includes("demoFeaturedNews"), "HomePage does not show a demo article when no news are published");
 assert.ok(homePageSource.includes("imageSrc={event.image}"), "HomePage passes event images into key event banners");
 assert.ok(componentsSource.includes("onPointerDown"), "activity carousel supports pointer drag scrolling");
 assert.ok(homePageSource.includes('variant="paged"'), "HomePage renders directions as a paginated carousel");

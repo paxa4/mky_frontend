@@ -38,6 +38,41 @@ test("resolves canonical profile section keys to public locations", () => {
   });
 });
 
+test("resolves methodika subject placements to their actual public route", () => {
+  const article = {
+    sections: [{ key: "methodika_subject:Математика" }],
+  };
+
+  assert.deepEqual(resolveArticleLocation(article), {
+    parentLabel: "Методическое пространство",
+    parentPath: "/metodicheskoe-prostranstvo/",
+    sectionLabel: "Математика",
+    sectionPath: "/metodika/matematika/",
+  });
+});
+
+test("resolves legacy event placements to the visible events page", () => {
+  assert.deepEqual(resolveArticleLocation({
+    sections: [{ key: "events", label: "Мероприятия", path: "Мероприятия" }],
+  }), {
+    parentLabel: "Образовательные события",
+    parentPath: "/obrazovatelnye-sobytiya/",
+    sectionLabel: "Образовательные события",
+    sectionPath: "/obrazovatelnye-sobytiya/",
+  });
+});
+
+test("resolves safety page placements to the public safety route", () => {
+  assert.deepEqual(resolveArticleLocation({
+    sections: [{ key: "page:/bezopasnost/" }],
+  }), {
+    parentLabel: "Безопасность",
+    parentPath: "/bezopasnost/",
+    sectionLabel: "Безопасность",
+    sectionPath: "/bezopasnost/",
+  });
+});
+
 test("maps legacy methodika sections to the real public materials page", () => {
   const article = {
     sections: [{ key: "methodika_section:rekomendacii", label: "Рекомендации", path: "Рекомендации" }],

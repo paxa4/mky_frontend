@@ -219,7 +219,15 @@ export function resolveArticleLocation(article) {
     const storedLabel = !isGeneratedSectionMeta(key, storedSection.label) ? storedSection.label : "";
     const sectionLabel = rest.join(" / ") || storedLabel || labelFromStoredSectionKey(key);
     if (key.startsWith("domu:")) return { parentLabel: parentLabel || "Дом учителя", parentPath: "/dom-uchitelya/", sectionLabel, sectionPath: `/dom-uchitelya/${key.replace("domu:", "").replace("root", "")}/` };
-    if (key.startsWith("methodika_subject:")) return { parentLabel: parentLabel || "Методическое пространство", parentPath: "/metodicheskoe-prostranstvo/", sectionLabel, sectionPath: "/metodicheskoe-prostranstvo/" };
+    if (key.startsWith("methodika_subject:")) {
+      const subject = key.replace("methodika_subject:", "");
+      return {
+        parentLabel: parentLabel || "Методическое пространство",
+        parentPath: "/metodicheskoe-prostranstvo/",
+        sectionLabel: sectionLabel || subject,
+        sectionPath: `/metodika/${methodikaSubjectSlug(subject)}/`,
+      };
+    }
     if (key.startsWith("methodika_section:")) {
       const legacyPath = LEGACY_METHODIKA_PUBLIC_PATHS[key.replace("methodika_section:", "")];
       const section = legacyPath ? findSectionByPath(legacyPath) : null;
@@ -237,11 +245,27 @@ export function resolveArticleLocation(article) {
     if (key.startsWith("page:")) {
       const publicPath = key.replace("page:", "");
       const section = findSectionByPath(publicPath);
+      if (publicPath === "/bezopasnost/") {
+        return {
+          parentLabel: "Безопасность",
+          parentPath: "/bezopasnost/",
+          sectionLabel: "Безопасность",
+          sectionPath: "/bezopasnost/",
+        };
+      }
       return {
         parentLabel: section?.parentTitle || section?.rootTitle || parentLabel || "Профильные разделы",
         parentPath: section?.parentPath || section?.rootPath || "/",
         sectionLabel: section?.title || sectionLabel,
         sectionPath: section?.path || publicPath,
+      };
+    }
+    if (key === "events") {
+      return {
+        parentLabel: "Образовательные события",
+        parentPath: "/obrazovatelnye-sobytiya/",
+        sectionLabel: "Образовательные события",
+        sectionPath: "/obrazovatelnye-sobytiya/",
       };
     }
   }
@@ -258,7 +282,25 @@ export function resolveArticleLocation(article) {
       parentLabel: "Методическое пространство",
       parentPath: "/metodicheskoe-prostranstvo/",
       sectionLabel: article.methodika_subject,
-      sectionPath: "/metodicheskoe-prostranstvo/",
+      sectionPath: `/metodika/${methodikaSubjectSlug(article.methodika_subject)}/`,
+    };
+  }
+  if (article.duplicate_to_events) {
+    return {
+      parentLabel: "Образовательные события",
+      parentPath: "/obrazovatelnye-sobytiya/",
+      sectionLabel: "Образовательные события",
+      sectionPath: "/obrazovatelnye-sobytiya/",
+    };
+  }
+  if (article.hub_kind === "events" || article.sections?.some((entry) => (
+    (typeof entry === "string" ? entry : entry?.key) === "events"
+  ))) {
+    return {
+      parentLabel: "Образовательные события",
+      parentPath: "/obrazovatelnye-sobytiya/",
+      sectionLabel: "Образовательные события",
+      sectionPath: "/obrazovatelnye-sobytiya/",
     };
   }
   if (article.hub_kind === "methodika" && article.hub_path) {

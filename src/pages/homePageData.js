@@ -22,16 +22,6 @@ export const keyEvents = [
   },
 ];
 
-export const demoFeaturedNews = {
-  title: "Иркутские педагогические чтения: горизонты развития современного образования",
-  date: "24 августа 2024",
-  author: "Пресс-служба ИМЦРО",
-  description:
-    "Традиционное мероприятие объединило специалистов образовательных организаций города для обсуждения актуальных направлений развития муниципальной системы образования.",
-  image: "/images/news2.jpg",
-  slug: "irkutskie-pedagogicheskie-chteniya",
-};
-
 export const mainSections = [
   {
     title: "ГИА",
@@ -54,7 +44,7 @@ export const mainSections = [
   {
     title: "Олимпиады и конкурсы для учащихся",
     description: "Конкурсные направления, положения и результаты для обучающихся.",
-    href: "/konkursy/dlya-detey/",
+    href: "/konkursy/",
     icon: "award",
   },
   {

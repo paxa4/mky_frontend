@@ -15,7 +15,6 @@ import {
 } from "../components/imcro/ImcroPublicComponents.jsx";
 import {
   contactInfo,
-  demoFeaturedNews,
   directions,
   homeBanners,
   keyEvents,
@@ -270,7 +269,7 @@ export default function HomePage({
   onOpenAuthor,
 }) {
   const navigate = useNavigate();
-  const featuredNews = useMemo(() => getFeaturedNews(publishedNews) || demoFeaturedNews, [publishedNews]);
+  const featuredNews = useMemo(() => getFeaturedNews(publishedNews), [publishedNews]);
   const featuredNewsHref = useMemo(() => getNewsHref(featuredNews), [featuredNews]);
   const featuredNewsDateTime = useMemo(() => getNewsDateTime(featuredNews), [featuredNews]);
   const featuredNewsAuthor = useMemo(() => getNewsAuthorLabel(featuredNews), [featuredNews]);
@@ -340,7 +339,7 @@ export default function HomePage({
                     onKeyDown={handleFeaturedKeyDown}
                   >
                     <div className="home-featured-media">
-                      <img src={featuredNewsImage} alt={featuredNews.title} loading="eager" />
+                      {featuredNewsImage && <img src={featuredNewsImage} alt={featuredNews.title} loading="eager" />}
                       <span className="home-featured-badge">Главная новость</span>
                     </div>
                     <div className="home-featured-content">

@@ -37,15 +37,17 @@ export default function FeaturedCard({ news, onClick, onAuthorClick }) {
         }
         .featured-pin svg { width: 21px; height: 21px; fill: currentColor; }
       `}</style>
-      <img
-        src={news.image}
-        alt={news.title}
-        style={{
-          position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover",
-          transform: hov ? "scale(1.04)" : "scale(1)",
-          transition: "transform 0.55s cubic-bezier(0.25,0.46,0.45,0.94)",
-        }}
-      />
+      {news.cover_image_url || news.image ? (
+        <img
+          src={news.cover_image_url || news.image}
+          alt={news.title}
+          style={{
+            position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover",
+            transform: hov ? "scale(1.04)" : "scale(1)",
+            transition: "transform 0.55s cubic-bezier(0.25,0.46,0.45,0.94)",
+          }}
+        />
+      ) : <div aria-hidden="true" style={{ position: "absolute", inset: 0, background: "#426f87" }} />}
       {news.is_pinned && (
         <span className="featured-pin" aria-label="Закреплённая статья" title="Закреплённая статья">
           <svg viewBox="0 0 24 24" aria-hidden="true">

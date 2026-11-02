@@ -168,12 +168,6 @@ const DEFAULT_CATEGORIES = [
   { id: 6, name: "Семинары" },
 ];
 
-const FALLBACK_IMAGES = [
-  "/images/news1.jpg",
-  "/images/news2.jpg",
-  "/images/news3.jpg",
-  "/images/news4.jpg",
-];
 const ARTICLES_STORAGE_KEY = "mky_articles";
 const LEGACY_ARTICLE_STORAGE_KEYS = [
   ARTICLES_STORAGE_KEY,
@@ -206,6 +200,7 @@ function normalizePublicRoute(path) {
 const SECTION_DETAIL_ROUTES = SECTION_PAGE_ROUTES.filter(({ path, node }) => (
   node.level >= 2
   && !normalizePublicRoute(path).startsWith("/tpmpk/")
+  && normalizePublicRoute(path) !== "/konkursy/dlya-detey/"
 ));
 
 const SECTION_DETAIL_ROUTE_PATHS = new Set(
@@ -310,9 +305,8 @@ function articleToNewsItem(article) {
   const location = resolveArticleLocation(article);
   const heroBlock = article.blocks?.find((block) => block.type === "hero");
   const paraBlock = article.blocks?.find((block) => block.type === "paragraph");
-  const imgBlock = article.blocks?.find((block) => block.type === "image" || block.type === "imagetext");
   const excerpt = article.lead || heroBlock?.data?.intro || article.excerpt || paraBlock?.data?.text || htmlToPlainText(article.body || "") || "";
-  const image = stripMkyPrefix(article.cover_image_url || imgBlock?.data?.url || article.image) || FALLBACK_IMAGES[(article.id - 1) % FALLBACK_IMAGES.length];
+  const image = stripMkyPrefix(article.cover_image_url || article.image);
 
   return {
     id: article.slug || `admin-${article.id}`,
@@ -799,7 +793,7 @@ function AppRoutes() {
         <Route path="/praktiki/podat/" element={<PracticeSubmitPage {...publicPageProps} />} />
         <Route path="/praktiki/:slug/" element={<PracticeDetailPage {...publicPageProps} />} />
         <Route path="/novosti/" element={<CommonNewsPage {...publicPageProps} newsItems={publishedNews} onOpenArticle={openArticle} onOpenAuthor={openAuthor} />} />
-        <Route path="/bezopasnost/" element={<SafetyPage {...publicPageProps} />} />
+        <Route path="/bezopasnost/" element={<SafetyPage {...publicPageProps} newsItems={profileNews} onOpenArticle={openArticle} />} />
         <Route path="/dom-uchitelya/novosti/" element={<DomUchitelyaNewsPage {...publicPageProps} newsItems={domuNews} onOpenArticle={openArticle} onOpenAuthor={openAuthor} />} />
         {DOMU_ARTICLE_SECTIONS.map((section) => (
           <Route
@@ -839,6 +833,7 @@ function AppRoutes() {
             element={<SectionRoutePage {...publicPageProps} node={node} newsItems={profileNews} onOpenArticle={openArticle} />}
           />
         ))}
+        <Route path="/konkursy/dlya-detey/" element={<Navigate to="/konkursy/" replace />} />
         {LEGACY_NOKO_SECTION_ROUTES.map((section) => (
           <Route
             key={section.path}
@@ -851,7 +846,7 @@ function AppRoutes() {
           <Route
             key={route.path}
             path={route.path}
-            element={<HubHomeRoutePage {...publicPageProps} config={route.config} />}
+            element={<HubHomeRoutePage {...publicPageProps} config={route.config} path={route.path} newsItems={[...profileNews, ...eventsNews]} />}
           />
         ))}
 

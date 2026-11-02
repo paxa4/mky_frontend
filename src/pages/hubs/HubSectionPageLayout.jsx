@@ -71,6 +71,7 @@ export function ArticleCard({ article, onOpenArticle, className = "" }) {
   const date = formatDate(getArticleDate(article));
   const category = article?.category || article?.type || "Материал";
   const description = getArticleDescription(article);
+  const image = article?.cover_image_url || article?.image || "";
   const href = article?.href || "";
   const canOpen = Boolean(href || (!article?.isFallback && onOpenArticle));
 
@@ -82,6 +83,9 @@ export function ArticleCard({ article, onOpenArticle, className = "" }) {
   return (
     <article className={cx("hub-section-article", className)}>
       <ImcroCard className="hub-section-article-card" hover>
+        <div className="hub-section-article-media">
+          {image && <img src={image} alt={article?.title || ""} loading="lazy" />}
+        </div>
         <div className="hub-section-article-meta">
           <time>{date}</time>
           <span>{category}</span>

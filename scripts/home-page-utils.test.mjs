@@ -24,6 +24,7 @@ const latestNews = {
 
 assert.equal(getFeaturedNews([latestNews])?.slug, "latest-news");
 assert.equal(getNewsImage(latestNews), "/static/articles/covers/latest.jpg");
+assert.equal(getNewsImage({ title: "Новость без обложки" }), "");
 assert.equal(getNewsDescription(latestNews), "Короткий анонс из базы данных.");
 assert.equal(getNewsHref(latestNews), "/article/latest-news");
 assert.equal(getNewsAuthorLabel(latestNews), "Иванова Мария Сергеевна");

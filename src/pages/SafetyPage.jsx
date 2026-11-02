@@ -7,8 +7,11 @@ import {
   ImcroPage,
   ImcroSection,
 } from "../components/imcro/ImcroPublicComponents.jsx";
+import { ArticleList } from "./hubs/HubSectionPageLayout.jsx";
+import { articleMatchesPublicSection } from "../features/admin/articlePlacements.js";
 
-export default function SafetyPage({ currentUser, onGoAuth, onGoAdmin, onGoProfile }) {
+export default function SafetyPage({ currentUser, onGoAuth, onGoAdmin, onGoProfile, newsItems = [], onOpenArticle }) {
+  const articles = newsItems.filter((item) => articleMatchesPublicSection(item, { path: "/bezopasnost/" }));
   return (
     <ImcroPage className="safety-page">
       <Header
@@ -24,9 +27,10 @@ export default function SafetyPage({ currentUser, onGoAuth, onGoAdmin, onGoProfi
             <ImcroCard className="safety-page__card">
               <span className="safety-page__eyebrow">Информационная безопасность</span>
               <h1>Безопасность</h1>
-              <p>Материалы раздела будут добавлены позже.</p>
+              <p>Информация и материалы по вопросам безопасности.</p>
             </ImcroCard>
           </ImcroSection>
+          <ArticleList articles={articles} onOpenArticle={onOpenArticle} />
         </ImcroContainer>
       </main>
       <Footer />

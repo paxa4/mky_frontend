@@ -671,11 +671,11 @@ function expandedBranchKeys(nodes = []) {
   return nodes.flatMap((item) => item.children?.length ? [item.key, ...expandedBranchKeys(item.children)] : []);
 }
 
-function SectionSelectorModal({ open, selectedKeys, onApply, onClose, allowedSubjects, isDomuMode, allowedScopes }) {
+function SectionSelectorModal({ open, selectedKeys, onApply, onClose, allowedSubjects, isDomuMode, methodikaOnly, allowedScopes }) {
   const [draftKeys, setDraftKeys] = useState(selectedKeys);
   const [query, setQuery] = useState("");
   const [onlySelected, setOnlySelected] = useState(false);
-  const tree = useMemo(() => buildArticleSectionTree({ allowedSubjects, isDomuMode }), [allowedSubjects, isDomuMode]);
+  const tree = useMemo(() => buildArticleSectionTree({ allowedSubjects, isDomuMode, methodikaOnly }), [allowedSubjects, isDomuMode, methodikaOnly]);
   const [expandedKeys, setExpandedKeys] = useState([]);
 
   useEffect(() => {
@@ -754,7 +754,7 @@ function SectionSelectorModal({ open, selectedKeys, onApply, onClose, allowedSub
             type="button"
             className="article-btn article-btn-primary"
             onClick={() => {
-              onApply(draftKeys, { allowedSubjects, isDomuMode, allowedScopes });
+              onApply(draftKeys, { allowedSubjects, isDomuMode, methodikaOnly, allowedScopes });
               onClose();
             }}
           >
@@ -1961,6 +1961,7 @@ function ArticleForm({
         open={sectionSelectorOpen}
         selectedKeys={selectedSectionKeys}
         onClose={() => setSectionSelectorOpen(false)}
+        methodikaOnly={role === "methodist"}
         onApply={(keys, options) => {
           setSaveState("Есть несохранённые изменения");
           setForm((current) => applyArticleSectionSelection(current, keys, options));

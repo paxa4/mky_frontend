@@ -1,5 +1,4 @@
 export const DEFAULT_AUTHOR_LABEL = "Редакция ИМЦРО";
-export const FALLBACK_NEWS_IMAGE = "/images/news2.jpg";
 export const CONTACT_COORDS = { lat: 52.281732, lon: 104.280948 };
 
 function clamp(value, min, max) {
@@ -47,7 +46,7 @@ export function getFeaturedNews(newsItems = []) {
 }
 
 export function getNewsImage(news) {
-  return news?.cover_image_url || news?.image || FALLBACK_NEWS_IMAGE;
+  return news?.cover_image_url || news?.image || "";
 }
 
 export function getNewsDescription(news) {

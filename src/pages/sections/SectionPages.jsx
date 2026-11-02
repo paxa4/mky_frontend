@@ -3,53 +3,17 @@ import { useNavigate } from "react-router-dom";
 import Footer from "../../components/Footer.jsx";
 import { ImcroPage } from "../../components/imcro/ImcroPublicComponents.jsx";
 import Header from "../../features/nav/Header.jsx";
+import { articleMatchesPublicSection } from "../../features/admin/articlePlacements.js";
 import { HubSectionPageLayout } from "../hubs/HubSectionPageLayout.jsx";
 import {
   findSectionByPath,
   getSectionBreadcrumbItems,
-  normalizePath,
 } from "./sectionStructure.js";
-
-function nodeSearchTerms(node) {
-  const pathParts = normalizePath(node.path).split("/").filter(Boolean);
-  return [
-    node.title,
-    node.rootTitle,
-    node.parentTitle,
-    ...pathParts,
-  ].filter(Boolean).map((value) => String(value).toLowerCase());
-}
-
-function articleMatchesNode(item, node) {
-  const itemPaths = [
-    item?.sectionPath,
-    item?.parentPath,
-  ].filter(Boolean).map(normalizePath);
-  const nodePath = normalizePath(node.path);
-
-  if (itemPaths.some((path) => path === nodePath || (node.level === 1 && path.startsWith(nodePath)))) {
-    return true;
-  }
-
-  if (itemPaths.length) return false;
-
-  const haystack = [
-    item?.parentLabel,
-    item?.sectionLabel,
-    item?.noko_section,
-    item?.hub_kind,
-    item?.hub_path,
-    item?.methodika_subject,
-    item?.title,
-  ].filter(Boolean).join(" ").toLowerCase();
-
-  return nodeSearchTerms(node).some((term) => term.length > 3 && haystack.includes(term));
-}
 
 function getSectionArticles(newsItems = [], node) {
   if (!Array.isArray(newsItems)) return [];
   return newsItems
-    .filter((item) => item?.title && articleMatchesNode(item, node))
+    .filter((item) => item?.title && articleMatchesPublicSection(item, node))
     .slice(0, 12);
 }
 

@@ -13,6 +13,7 @@ function PinnedBadge() {
 
 export default function NewsCard({ news, horizontal = false, onClick, onAuthorClick }) {
   const [hov, setHov] = useState(false);
+  const image = news?.cover_image_url || news?.image;
 
   if (!news) return null;
 
@@ -50,12 +51,12 @@ export default function NewsCard({ news, horizontal = false, onClick, onAuthorCl
         }
         .news-pin svg { width: 18px; height: 18px; fill: currentColor; }
       `}</style>
-      <div style={{ height: horizontal ? "auto" : 178, width: horizontal ? "40%" : "100%", overflow: "hidden", flexShrink: 0, position: "relative", background: "rgba(31,80,115,0.08)" }}>
-        <img src={news.image} alt={news.title} style={{
+      <div style={{ height: horizontal ? "auto" : 178, width: horizontal ? "40%" : "100%", minHeight: horizontal ? 178 : undefined, overflow: "hidden", flexShrink: 0, position: "relative", background: "rgba(31,80,115,0.08)" }}>
+        {image && <img src={image} alt={news.title} style={{
           width: "100%", height: "100%", objectFit: "cover", display: "block",
           transform: hov ? "scale(1.06)" : "scale(1)",
           transition: "transform 0.45s cubic-bezier(0.25,0.46,0.45,0.94)",
-        }} />
+        }} />}
         {news.is_pinned && <PinnedBadge />}
       </div>
       <div style={{ padding: "18px 20px 22px", flex: 1, display: "flex", flexDirection: "column" }}>

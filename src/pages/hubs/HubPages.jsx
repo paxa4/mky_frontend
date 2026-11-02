@@ -11,6 +11,7 @@ import {
   NOKO_ROUTES,
   methodikaSubjectBySlug,
 } from "../../features/admin/articleTaxonomy.js";
+import { articleMatchesPublicSection } from "../../features/admin/articlePlacements.js";
 import { SECTION_TREE } from "../sections/sectionStructure.js";
 import { HubHomePageLayout } from "./HubHomePageLayout.jsx";
 import { NOKO_HUB_HOME_CONFIG } from "./hubHomeConfig.js";
@@ -147,7 +148,11 @@ function HubSectionLayout({ title, lead, homePath, homeLabel, children, heroClas
 export function MethodikaHomePage({ newsItems = [], ...props }) {
   const methodikaRoot = SECTION_TREE.find((section) => section.path === "/metodicheskoe-prostranstvo/");
   const cards = METHODIKA_SUBJECT_CARDS.map((subject) => {
-    const related = newsItems.filter((item) => item.methodika_subject === subject.name);
+    const subjectPath = `/metodika/${subject.slug}/`;
+    const related = newsItems.filter((item) => (
+      item.methodika_subject === subject.name
+      || articleMatchesPublicSection(item, { path: subjectPath })
+    ));
     return { subject, related };
   });
   return (
@@ -193,7 +198,10 @@ export function MethodikaSubjectPage({ newsItems = [], ...props }) {
   const navigate = useNavigate();
   const { predmetSlug } = useParams();
   const subjectName = methodikaSubjectBySlug(predmetSlug || "");
-  const subjectNews = newsItems.filter((item) => item.methodika_subject === subjectName);
+  const subjectNews = newsItems.filter((item) => (
+    item.methodika_subject === subjectName
+    || articleMatchesPublicSection(item, { path: `/metodika/${predmetSlug}/` })
+  ));
 
   if (!subjectName) {
     return (
@@ -275,8 +283,26 @@ export function NokoHomePage(props) {
   return <HubHomePageLayout {...props} {...NOKO_HUB_HOME_CONFIG} />;
 }
 
-export function HubHomeRoutePage({ config, ...props }) {
-  return <HubHomePageLayout {...props} {...config} />;
+export function HubHomeRoutePage({ config, path, newsItems = [], ...props }) {
+  const rootNewsConfig = {
+    title: "Публикации раздела",
+    allHref: path,
+    items: [...new Map(newsItems.map((item) => [item.id || item.articleId || item.slug, item])).values()]
+      .filter((item) => articleMatchesPublicSection(item, { path, level: 1 }))
+      .slice(0, 3)
+      .map((item) => ({
+        title: item.title,
+        date: item.date,
+        href: `/article/${encodeURIComponent(item.slug || item.articleId || item.id)}`,
+      })),
+  };
+  const pageConfig = ["/obrazovatelnye-sobytiya/", "/konkursy/"].includes(path)
+    ? {
+        ...config,
+        latestNews: rootNewsConfig,
+      }
+    : config;
+  return <HubHomePageLayout {...props} {...pageConfig} />;
 }
 
 export function NokoSectionPage({ section, ...props }) {

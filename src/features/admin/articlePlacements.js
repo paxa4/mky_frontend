@@ -4,14 +4,18 @@ import {
   DOMU_SECTIONS,
   KONKURSY_SECTIONS,
   METHODIKA_SUBJECTS,
-  NOKO_SECTIONS,
   ROOT_SECTIONS,
+  methodikaSubjectSlug,
 } from "./articleTaxonomy.js";
-import { SECTION_TREE, normalizePath } from "../../pages/sections/sectionStructure.js";
+import {
+  SECTION_TREE,
+  findSectionByPath,
+  getSectionBreadcrumbItems,
+  normalizePath,
+} from "../../pages/sections/sectionStructure.js";
 
 const ROOT_LABELS = {
   home: "Новости",
-  events: "Мероприятия",
   domu: "Дом учителя",
   methodika: "Методическое пространство",
   noko: "НОКО",
@@ -36,7 +40,11 @@ function optionNodes(root, options, keyPrefix = root) {
 }
 
 function branchFromOptions(root, label, options, rootKey = `${root}:root`, keyPrefix = root) {
-  return node(rootKey, label, optionNodes(root, options, keyPrefix), { root, value: "root" });
+  return node(rootKey, label, optionNodes(root, options, keyPrefix), {
+    root,
+    value: "root",
+    selectable: false,
+  });
 }
 
 function publicPageNode(section) {
@@ -48,25 +56,25 @@ function publicPageNode(section) {
   });
 }
 
-function publicPageGroup(rootPath, label) {
+function publicPageGroup(rootPath, label, { includeRoot = false } = {}) {
   const root = SECTION_TREE.find((section) => section.path === rootPath);
   if (!root?.children?.length) return null;
-  return node(`page-group:${rootPath}`, label || root.title, root.children.map(publicPageNode), {
+  return node(`page-group:${rootPath}`, label || root.title, (includeRoot ? [root] : root.children).map(publicPageNode), {
     selectable: false,
     root: "page",
     value: rootPath,
   });
 }
 
-function methodikaBranch(allowedSubjects = METHODIKA_SUBJECTS) {
+function methodikaBranch(allowedSubjects = METHODIKA_SUBJECTS, methodikaOnly = false) {
   return node("methodika:root", ROOT_LABELS.methodika, [
     node("methodika_subjects:group", "Предметы", allowedSubjects.map((subject) => node(`methodika_subject:${subject}`, subject, [], {
       root: "methodika",
       value: subject,
       kind: "subject",
     })), { selectable: false }),
-    publicPageGroup("/metodicheskoe-prostranstvo/", "Профильные страницы"),
-  ], { root: "methodika", value: "root" });
+    ...(!methodikaOnly ? [publicPageGroup("/metodicheskoe-prostranstvo/", "Профильные страницы")] : []),
+  ].filter(Boolean), { root: "methodika", value: "root", selectable: false });
 }
 
 const PAGE_GROUP_ROOTS = [
@@ -83,20 +91,22 @@ const PAGE_GROUP_ROOTS = [
   ["/vospitatelnoe-prostranstvo/", "Воспитательное пространство"],
 ];
 
-export function buildArticleSectionTree({ allowedSubjects = METHODIKA_SUBJECTS, isDomuMode = false } = {}) {
+export function buildArticleSectionTree({ allowedSubjects = METHODIKA_SUBJECTS, isDomuMode = false, methodikaOnly = false } = {}) {
   const tree = [
     node("home", ROOT_LABELS.home, [], { root: "home", value: "home" }),
-    node("events", ROOT_LABELS.events, [], { root: "events", value: "events" }),
     branchFromOptions("domu", ROOT_LABELS.domu, DOMU_SECTIONS),
-    methodikaBranch(allowedSubjects),
-    branchFromOptions("noko", ROOT_LABELS.noko, NOKO_SECTIONS),
+    methodikaBranch(allowedSubjects, methodikaOnly),
     branchFromOptions("konkursy", ROOT_LABELS.konkursy, KONKURSY_SECTIONS),
     branchFromOptions("deyatelnost", ROOT_LABELS.deyatelnost, DEYATELNOST_SECTIONS),
     branchFromOptions("archiv", ROOT_LABELS.archiv, ARCHIV_SECTIONS),
     node("profile-pages:root", "Другие профильные разделы", PAGE_GROUP_ROOTS.flatMap(([path, label]) => {
-      const group = publicPageGroup(path, label);
+      const group = publicPageGroup(path, label, { includeRoot: path === "/obrazovatelnye-sobytiya/" });
       return group ? [group] : [];
-    }), { selectable: false, root: "page", value: "profile" }),
+    }).concat([node("page:/bezopasnost/", "Безопасность", [], {
+      root: "page",
+      value: "/bezopasnost/",
+      path: "/bezopasnost/",
+    })]), { selectable: false, root: "page", value: "profile" }),
   ];
   return isDomuMode ? tree.filter((item) => item.key === "domu:root") : tree;
 }
@@ -104,10 +114,16 @@ export function buildArticleSectionTree({ allowedSubjects = METHODIKA_SUBJECTS, 
 export function flattenArticleSections(nodes = [], ancestors = []) {
   return nodes.flatMap((item) => {
     const pathParts = [...ancestors, item.label].filter(Boolean);
+    const publicSection = item.path ? findSectionByPath(item.path) : null;
+    const pathLabel = publicSection
+      ? getSectionBreadcrumbItems(publicSection).slice(1).map((crumb) => crumb.label).join(" / ")
+      : item.root === "page" && item.path
+        ? item.label
+        : pathParts.join(" / ");
     const current = {
       ...item,
-      pathLabel: pathParts.join(" / "),
-      searchText: pathParts.join(" ").toLowerCase(),
+      pathLabel,
+      searchText: `${pathLabel} ${pathParts.join(" ")}`.toLowerCase(),
     };
     const children = item.children?.length ? flattenArticleSections(item.children, pathParts) : [];
     return item.selectable === false ? children : [current, ...children];
@@ -162,10 +178,76 @@ export function getSectionLookup(options = {}) {
   return new Map(flattenArticleSections(buildArticleSectionTree(options)).map((section) => [section.key, section]));
 }
 
-export function getArticleSectionSelection(article = {}) {
-  if (Array.isArray(article.sections) && article.sections.length) {
-    return uniqueKeys(article.sections.map((section) => typeof section === "string" ? section : section.key));
+export function publicPathFromArticleSectionKey(key) {
+  const value = String(key || "");
+  if (value.startsWith("page:")) return normalizePath(value.slice("page:".length));
+  if (value === "events") return "/obrazovatelnye-sobytiya/";
+  if (value.startsWith("methodika_subject:")) {
+    return `/metodika/${methodikaSubjectSlug(value.slice("methodika_subject:".length))}/`;
   }
+  if (value.startsWith("methodika_section:")) {
+    const section = value.slice("methodika_section:".length);
+    return ["methodicheskiy-sovet", "rekomendacii"].includes(section)
+      ? "/metodicheskoe-prostranstvo/metodicheskie-materialy/"
+      : null;
+  }
+  for (const [prefix, root] of [
+    ["domu:", "/dom-uchitelya/"],
+    ["noko:", "/noko/"],
+    ["konkursy:", "/konkursy/"],
+    ["deyatelnost:", "/deyatelnost/"],
+    ["archiv:", "/archiv/"],
+  ]) {
+    if (!value.startsWith(prefix)) continue;
+    const section = value.slice(prefix.length);
+    return section && section !== "root" ? normalizePath(`${root}${section}`) : root;
+  }
+  return null;
+}
+
+export function articleMatchesPublicSection(article = {}, section = {}) {
+  const targetPath = normalizePath(section.path);
+  if (!targetPath || targetPath === "/") return false;
+  const paths = new Set();
+  const addPathAndParent = (path) => {
+    if (!path) return;
+    let node = findSectionByPath(path);
+    paths.add(normalizePath(path));
+    while (node?.parentPath) {
+      paths.add(node.parentPath);
+      node = findSectionByPath(node.parentPath);
+    }
+  };
+
+  addPathAndParent(article.sectionPath);
+  addPathAndParent(article.parentPath);
+  if (article.duplicate_to_events) addPathAndParent("/obrazovatelnye-sobytiya/");
+  for (const entry of article.sections || []) {
+    const key = typeof entry === "string" ? entry : entry?.key;
+    addPathAndParent(publicPathFromArticleSectionKey(key));
+  }
+
+  return paths.has(targetPath) || [...paths].some((path) => (
+    section.level === 1 && path.startsWith(targetPath)
+  ));
+}
+
+function canonicalizeSectionKey(key) {
+  if (["domu:root", "methodika:root", "noko:root", "konkursy:root", "deyatelnost:root", "archiv:root"].includes(key)) {
+    return null;
+  }
+  if (key === "events") return "page:/obrazovatelnye-sobytiya/";
+  if (key.startsWith("noko:") && key !== "noko:root") {
+    return `page:${publicPathFromArticleSectionKey(key)}`;
+  }
+  if (key.startsWith("methodika_section:")) {
+    const path = publicPathFromArticleSectionKey(key);
+    return path ? `page:${path}` : key;
+  }
+  return key;
+}
+
+function legacyKeysFromArticle(article = {}, includeDefaultNews = true) {
   const keys = [];
   if (article.duplicate_to_main) keys.push("home");
   if (article.dom_uchitelya_section) keys.push(`domu:${article.dom_uchitelya_section}`);
@@ -175,8 +257,19 @@ export function getArticleSectionSelection(article = {}) {
   if (article.hub_kind && article.hub_kind !== "methodika" && article.hub_kind !== "events" && article.hub_path) keys.push(`${article.hub_kind}:${article.hub_path}`);
   if (article.hub_kind && article.hub_kind !== "methodika" && article.hub_kind !== "events" && !article.hub_path) keys.push(`${article.hub_kind}:root`);
   if (article.duplicate_to_events) keys.push("events");
-  if (!keys.length && !article.hub_kind) keys.push("home");
-  return uniqueKeys(keys);
+  if (includeDefaultNews && !keys.length && !article.hub_kind) keys.push("home");
+  return keys;
+}
+
+export function getArticleSectionSelection(article = {}) {
+  const storedKeys = Array.isArray(article.sections)
+    ? article.sections
+      .map((section) => typeof section === "string" ? section : section?.key)
+      .filter(Boolean)
+    : [];
+  return uniqueKeys([...storedKeys, ...legacyKeysFromArticle(article, !storedKeys.length)]
+    .map(canonicalizeSectionKey)
+    .filter(Boolean));
 }
 
 function primarySection(keys) {
@@ -228,7 +321,7 @@ function scopeFromKeys(keys, currentScope = "imcro_only", allowedScopes = ["imcr
 }
 
 export function applyArticleSectionSelection(form = {}, keys = [], options = {}) {
-  const selectedKeys = uniqueKeys(keys);
+  const selectedKeys = uniqueKeys(keys.map(canonicalizeSectionKey).filter(Boolean));
   const lookup = getSectionLookup(options);
   const sections = selectedKeys.map((key) => {
     const section = lookup.get(key);
@@ -251,7 +344,7 @@ export function applyArticleSectionSelection(form = {}, keys = [], options = {})
 
 export function sectionChipsFromKeys(keys = [], maxVisible = 3, options = {}) {
   const lookup = getSectionLookup(options);
-  const chips = uniqueKeys(keys).map((key) => ({
+  const chips = uniqueKeys(keys.map(canonicalizeSectionKey).filter(Boolean)).map((key) => ({
     key,
     label: lookup.get(key)?.pathLabel || key,
   }));
@@ -272,7 +365,7 @@ export function sectionKeysForArticle(article = {}) {
 
 export function rootLabelForSectionKey(key) {
   if (!key) return ROOT_SECTIONS[0]?.label || ROOT_LABELS.home;
-  if (key === "home" || key === "events") return ROOT_LABELS[key];
+  if (key === "home") return ROOT_LABELS.home;
   if (key.startsWith("methodika_subject:") || key.startsWith("methodika_section:")) return ROOT_LABELS.methodika;
   return ROOT_LABELS[key.split(":")[0]] || ROOT_LABELS.home;
 }
