@@ -25,6 +25,7 @@ function lazyNamed(loader, exportName) {
 
 const HomePage = lazy(() => import("./pages/HomePage.jsx"));
 const AuthPage = lazy(() => import("./pages/AuthPage.jsx"));
+const VerifyEmailPage = lazy(() => import("./pages/VerifyEmailPage.jsx"));
 const AdminPage = lazy(() => import("./pages/AdminPage.jsx"));
 const ArticlePage = lazy(() => import("./pages/ArticlePage.jsx"));
 const AuthorArticlesPage = lazy(() => import("./pages/AuthorArticlesPage.jsx"));
@@ -749,6 +750,7 @@ function AppRoutes() {
               : <AuthPage onLogin={handleLogin} />
           }
         />
+        <Route path="/verify-email" element={<VerifyEmailPage />} />
         <Route
           path="/admin/tpmpk/*"
           element={
