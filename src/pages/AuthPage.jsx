@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { apiLoginWithProfile, apiRegister } from "../api.js";
+import { apiLoginWithProfile, apiRegister, apiResendVerification } from "../api.js";
+import { DEFAULT_RESEND_COOLDOWN_SECONDS, formatCooldown, useResendCooldown } from "../utils/useResendCooldown.js";
 import { authenticate, canAccessAdmin, canAccessDomuAdmin, canAccessTpmpkAdmin, mergeTestUserProfile } from "../auth.js";
 
 export default function AuthPage({ onLogin }) {
@@ -17,6 +18,28 @@ export default function AuthPage({ onLogin }) {
     searchParams.get("reason") === "session-expired" ? "Сессия истекла. Войдите снова." : "",
   );
   const [submitting, setSubmitting] = useState(null);
+  // Подтверждение почты
+  const [verificationSent, setVerificationSent] = useState(false); // после регистрации ушло письмо
+  const [needsVerification, setNeedsVerification] = useState(false); // вход отклонён: почта не подтверждена
+  const [resendState, setResendState] = useState({ status: "idle", message: "" });
+  const [cooldown, setCooldown] = useResendCooldown();
+
+  const resendVerification = async (email) => {
+    if (cooldown > 0) return;
+    setResendState({ status: "sending", message: "" });
+    try {
+      const data = await apiResendVerification(email);
+      setResendState({ status: "sent", message: data?.message || "Письмо отправлено повторно." });
+      setCooldown(data?.retry_after_seconds || DEFAULT_RESEND_COOLDOWN_SECONDS);
+    } catch (err) {
+      setResendState({ status: "error", message: err?.message || "Не удалось отправить письмо." });
+    }
+  };
+
+  const resetVerificationState = () => {
+    setNeedsVerification(false);
+    setResendState({ status: "idle", message: "" });
+  };
 
   const getPasswordStrength = (pass) => {
     if (!pass) return 0;
@@ -40,6 +63,7 @@ export default function AuthPage({ onLogin }) {
   const handleLogin = async (event) => {
     event.preventDefault();
     setError("");
+    resetVerificationState();
     setSubmitting("login");
     let backendError = "";
     try {
@@ -47,6 +71,12 @@ export default function AuthPage({ onLogin }) {
       onLogin?.(mergeTestUserProfile(user));
       return;
     } catch (err) {
+      if (err?.status === 403) {
+        // Пароль верный, но почта не подтверждена — показываем кнопку повторной отправки
+        setNeedsVerification(true);
+        setError(err.message);
+        return;
+      }
       backendError = err?.message || "Backend авторизации недоступен.";
       const user = authenticate(loginForm.email, loginForm.password);
       if (!user) {
@@ -71,12 +101,17 @@ export default function AuthPage({ onLogin }) {
     try {
       const email = regForm.email.trim();
       const password = regForm.password;
-      await apiRegister({
+      const created = await apiRegister({
         name: regForm.name.trim(),
         email,
         password,
       });
       setLoginForm({ email, password });
+      // email_verified === false означает, что бэкенд отправил письмо подтверждения
+      setVerificationSent(created?.email_verified === false);
+      setResendState({ status: "idle", message: "" });
+      // письмо только что ушло — повторная отправка доступна через минуту
+      if (created?.email_verified === false) setCooldown(DEFAULT_RESEND_COOLDOWN_SECONDS);
       setDone(true);
     } catch (err) {
       setError(err?.message || "Не удалось зарегистрироваться. Проверьте данные.");
@@ -205,6 +240,14 @@ export default function AuthPage({ onLogin }) {
         .success-box { text-align: center; padding: 18px 0; }
         .success-box h3 { margin: 0 0 8px; font-size: 19px; }
         .success-box p { margin: 0 0 20px; color: #64748B; line-height: 1.6; }
+        .link-btn {
+          border: 0; background: transparent; padding: 0; color: #1F5073;
+          font: inherit; font-size: 14px; font-weight: 800; cursor: pointer; text-decoration: underline;
+        }
+        .link-btn:disabled { opacity: .5; cursor: default; }
+        .resend-row { margin-top: 14px; display: grid; gap: 8px; justify-items: center; font-size: 13px; color: #64748B; }
+        .resend-note { color: #166534; font-weight: 700; }
+        .resend-note.error { color: #B91C1C; }
         @keyframes fadeSlideIn {
           from { opacity: 0; transform: translateY(8px); }
           to { opacity: 1; transform: translateY(0); }
@@ -245,8 +288,8 @@ export default function AuthPage({ onLogin }) {
 
             <div className="auth-card">
               <div className="tab-row">
-                <button className={`tab-btn${tab === "login" ? " active" : ""}`} onClick={() => { setTab("login"); setDone(false); setError(""); }}>Вход</button>
-                <button className={`tab-btn${tab === "register" ? " active" : ""}`} onClick={() => { setTab("register"); setDone(false); setError(""); }}>Регистрация</button>
+                <button className={`tab-btn${tab === "login" ? " active" : ""}`} onClick={() => { setTab("login"); setDone(false); setError(""); resetVerificationState(); }}>Вход</button>
+                <button className={`tab-btn${tab === "register" ? " active" : ""}`} onClick={() => { setTab("register"); setDone(false); setError(""); resetVerificationState(); }}>Регистрация</button>
               </div>
 
               <div key={tab} className="form-animate">
@@ -286,17 +329,66 @@ export default function AuthPage({ onLogin }) {
                     <button className="auth-btn" disabled={submitting === "login" || !loginForm.email || !loginForm.password}>
                       {submitting === "login" ? "Входим..." : "Войти в систему"}
                     </button>
+                    {needsVerification && (
+                      <div className="resend-row">
+                        <span>Не пришло письмо? Проверьте папку «Спам» или</span>
+                        <button
+                          type="button"
+                          className="link-btn"
+                          disabled={resendState.status === "sending" || cooldown > 0}
+                          onClick={() => resendVerification(loginForm.email)}
+                        >
+                          {resendState.status === "sending"
+                            ? "Отправляем..."
+                            : cooldown > 0
+                              ? `отправить ещё раз можно через ${formatCooldown(cooldown)}`
+                              : "отправьте письмо ещё раз"}
+                        </button>
+                        {resendState.message && (
+                          <span className={`resend-note${resendState.status === "error" ? " error" : ""}`}>{resendState.message}</span>
+                        )}
+                      </div>
+                    )}
                   </form>
                 )}
 
                 {tab === "register" && (
                   <>
                     {done ? (
-                      <div className="success-box">
-                        <h3>Готово</h3>
-                        <p>Аккаунт <strong>{regForm.email}</strong> создан. Теперь можно войти с этим email и паролем.</p>
-                        <button className="auth-btn" onClick={() => { setTab("login"); setDone(false); }}>Войти в аккаунт</button>
-                      </div>
+                      verificationSent ? (
+                        <div className="success-box">
+                          <h3>Подтвердите почту</h3>
+                          <p>
+                            Мы отправили письмо на <strong>{regForm.email}</strong>.
+                            Перейдите по ссылке из письма, чтобы завершить регистрацию. Ссылка действует 24 часа.
+                          </p>
+                          <button className="auth-btn" onClick={() => { setTab("login"); setDone(false); resetVerificationState(); }}>Перейти ко входу</button>
+                          <div className="resend-row">
+                            <span>Не пришло письмо? Проверьте папку «Спам» или</span>
+                            <button
+                              type="button"
+                              className="link-btn"
+                              disabled={resendState.status === "sending" || cooldown > 0}
+                              onClick={() => resendVerification(regForm.email)}
+                            >
+                              {resendState.status === "sending"
+                                ? "Отправляем..."
+                                : cooldown > 0
+                                  ? `отправить ещё раз можно через ${formatCooldown(cooldown)}`
+                                  : "отправьте письмо ещё раз"}
+                            </button>
+                            {resendState.message && (
+                              <span className={`resend-note${resendState.status === "error" ? " error" : ""}`}>{resendState.message}</span>
+                            )}
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="success-box">
+                          <h3>Готово</h3>
+                          <p>Аккаунт <strong>{regForm.email}</strong> создан. Теперь можно войти с этим email и паролем.</p>
+                          <button className="auth-btn" onClick={() => { setTab("login"); setDone(false); }}>Войти в аккаунт</button>
+                        </div>
+                      )
                     ) : (
                       <form className="auth-form" onSubmit={handleRegister}>
                         {error && <div className="auth-error">{error}</div>}

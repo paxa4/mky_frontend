@@ -173,7 +173,11 @@ export async function apiLogin(email, password) {
     body,
   });
   const data = await readJson(res);
-  if (!res.ok) throw new Error(getErrorMessage(data, "Неверный email или пароль"));
+  if (!res.ok) {
+    const error = new Error(getErrorMessage(data, "Неверный email или пароль"));
+    error.status = res.status; // 403 = почта не подтверждена
+    throw error;
+  }
   if (!data?.access_token) throw new Error("Сервер не вернул токен авторизации");
   saveToken(data);
   return data;
@@ -195,6 +199,28 @@ export async function apiLoginWithProfile(email, password) {
     refresh_token: token.refresh_token,
     token_type: token.token_type,
   };
+}
+
+export async function apiVerifyEmail(token) {
+  const res = await fetch(`${API_BASE}/auth/verify-email`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ token }),
+  });
+  const data = await readJson(res);
+  if (!res.ok) throw new Error(getErrorMessage(data, "Не удалось подтвердить почту"));
+  return data;
+}
+
+export async function apiResendVerification(email) {
+  const res = await fetch(`${API_BASE}/auth/resend-verification`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email: String(email || "").trim() }),
+  });
+  const data = await readJson(res);
+  if (!res.ok) throw new Error(getErrorMessage(data, "Не удалось отправить письмо"));
+  return data;
 }
 
 export function apiLogout() {
