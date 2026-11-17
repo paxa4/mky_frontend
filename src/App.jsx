@@ -28,6 +28,7 @@ const AuthPage = lazy(() => import("./pages/AuthPage.jsx"));
 const VerifyEmailPage = lazy(() => import("./pages/VerifyEmailPage.jsx"));
 const AdminPage = lazy(() => import("./pages/AdminPage.jsx"));
 const ArticlePage = lazy(() => import("./pages/ArticlePage.jsx"));
+const SearchPage = lazy(() => import("./pages/SearchPage.jsx"));
 const AuthorArticlesPage = lazy(() => import("./pages/AuthorArticlesPage.jsx"));
 const ProfilePage = lazy(() => import("./pages/ProfilePage.jsx"));
 const PracticesPage = lazy(() => import("./pages/practices/PracticesPage.jsx"));
@@ -602,12 +603,43 @@ function AppRoutes() {
       || String(item.id) === id
       || (stateKey && (String(item.slug || item.id) === stateKey || String(item.id) === String(stateArticle.articleId || stateArticle.id)))
     );
-    const article = freshArticle || stateArticle;
+    const hasLocalArticle = Boolean(freshArticle || stateArticle);
+    const [loadedArticle, setLoadedArticle] = useState(null);
+    const [articleLoading, setArticleLoading] = useState(true);
+
+    useEffect(() => {
+      if (hasLocalArticle) {
+        setLoadedArticle(null);
+        setArticleLoading(false);
+        return undefined;
+      }
+      let cancelled = false;
+      setLoadedArticle(null);
+      setArticleLoading(true);
+      fetch(`${API_BASE}/api/public/articles/${encodeURIComponent(id)}`)
+        .then((response) => {
+          if (!response.ok) throw new Error(`HTTP ${response.status}`);
+          return response.json();
+        })
+        .then((articleData) => {
+          if (!cancelled) setLoadedArticle(apiArticleToNewsItem(articleData));
+        })
+        .catch(() => {
+          if (!cancelled) setLoadedArticle(null);
+        })
+        .finally(() => {
+          if (!cancelled) setArticleLoading(false);
+        });
+      return () => { cancelled = true; };
+    }, [id, hasLocalArticle]);
+
+    const article = freshArticle || stateArticle || loadedArticle;
+    if (articleLoading && !article) return <RouteFallback />;
     if (!article) return <ArticleNotFoundPage />;
     return (
       <ArticlePage
         article={article}
-        onBack={() => navigate("/novosti/")}
+        onBack={() => navigate(location.state?.from || "/novosti/")}
         currentUser={currentUser}
         onGoAuth={(tab) => navigate(`/auth?tab=${tab || "login"}`)}
         onGoAdmin={goAdmin}
@@ -791,6 +823,7 @@ function AppRoutes() {
           }
         />
         <Route path="/article/:id" element={<ArticleRoute />} />
+        <Route path="/search" element={<SearchPage {...publicPageProps} />} />
         <Route path="/praktiki/" element={<PracticesPage {...publicPageProps} />} />
         <Route path="/praktiki/podat/" element={<PracticeSubmitPage {...publicPageProps} />} />
         <Route path="/praktiki/:slug/" element={<PracticeDetailPage {...publicPageProps} />} />

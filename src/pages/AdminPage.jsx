@@ -9,7 +9,6 @@ import ChatSettings from "../components/chat/ChatSettings.jsx";
 import ArticlesModule from "../features/admin/ArticlesModule.jsx";
 import PracticesModule from "../features/admin/PracticesModule.jsx";
 import AuditLogModule from "../features/admin/AuditLogModule.jsx";
-import PortalSettingsModule from "../features/admin/PortalSettingsModule.jsx";
 import UsersRolesModule from "../features/admin/UsersRolesModule.jsx";
 import AdminLayout from "../features/admin/AdminLayout.jsx";
 import { canManageUsers, hasPermission } from "../auth.js";
@@ -23,7 +22,6 @@ const ADMIN_MODULES = [
   { key: "editor", path: "/admin/templates", label: "Конструктор шаблонов", icon: "editor" },
   { key: "users", path: "/admin/users", label: "Пользователи и роли", icon: "users" },
   { key: "audit", path: "/admin/audit", label: "Журнал действий", icon: "audit" },
-  { key: "settings", path: "/admin/settings", label: "Настройки портала", icon: "settings" },
   {
     key: "assistant",
     path: "/admin/assistant",
@@ -73,10 +71,6 @@ const MODULE_META = {
   audit: {
     title: "Журнал действий",
     subtitle: "События администрирования и изменения данных портала",
-  },
-  settings: {
-    title: "Настройки портала",
-    subtitle: "Служебные параметры внутренней административной системы",
   },
 };
 
@@ -476,14 +470,14 @@ function AccessDenied({ title }) {
 }
 
 function AssistantModule({ currentUser, view }) {
-  const canViewSettings = hasPermission(currentUser, "portal_settings", "view") || canManageUsers(currentUser);
-  const canViewQuality = canViewSettings || hasPermission(currentUser, "audit_log", "view");
+  const canManageAssistantSettings = canManageUsers(currentUser);
+  const canViewQuality = canManageAssistantSettings || hasPermission(currentUser, "audit_log", "view");
 
   if (view === "quality") {
     return canViewQuality ? <AnswerQualityStats /> : <AccessDenied title="Качество ответа" />;
   }
 
-  return canViewSettings ? <ChatSettings /> : <AccessDenied title="Настройка чата" />;
+  return canManageAssistantSettings ? <ChatSettings /> : <AccessDenied title="Настройка чата" />;
 }
 
 export default function AdminPage({ currentUser, onArticlesChanged }) {
@@ -500,8 +494,7 @@ export default function AdminPage({ currentUser, onArticlesChanged }) {
     editor: hasPermission(currentUser, "certificate_templates", "view"),
     users: canManageUsers(currentUser),
     audit: hasPermission(currentUser, "audit_log", "view"),
-    settings: hasPermission(currentUser, "portal_settings", "view"),
-    assistant: hasPermission(currentUser, "portal_settings", "view") || hasPermission(currentUser, "audit_log", "view") || canManageUsers(currentUser),
+    assistant: hasPermission(currentUser, "audit_log", "view") || canManageUsers(currentUser),
   }), [currentUser]);
 
   const activeModule = getActiveAdminModule(location.pathname);
@@ -531,6 +524,8 @@ export default function AdminPage({ currentUser, onArticlesChanged }) {
   useEffect(() => {
     const legacyAssistantPath = ASSISTANT_LEGACY_PATHS.find((path) => isModulePath(location.pathname, path.from));
     if (location.pathname === "/admin" || location.pathname === "/admin/") {
+      navigate("/admin/dashboard", { replace: true });
+    } else if (isModulePath(location.pathname, "/admin/settings")) {
       navigate("/admin/dashboard", { replace: true });
     } else if (location.pathname === "/admin/assistant" || location.pathname === "/admin/assistant/") {
       navigate("/admin/assistant/chat", { replace: true });
@@ -584,7 +579,7 @@ export default function AdminPage({ currentUser, onArticlesChanged }) {
   } else if (activeKey === "audit") {
     content = <AuditLogModule />;
   } else {
-    content = <PortalSettingsModule />;
+    content = <DashboardModule />;
   }
 
   return (

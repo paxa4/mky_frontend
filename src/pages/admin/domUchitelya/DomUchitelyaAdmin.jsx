@@ -8,7 +8,6 @@ const ADMIN_MODULES = [
   { key: "editor", path: "/admin/templates", label: "Конструктор шаблонов", icon: "editor" },
   { key: "users", path: "/admin/users", label: "Пользователи и роли", icon: "users" },
   { key: "audit", path: "/admin/audit", label: "Журнал действий", icon: "audit" },
-  { key: "settings", path: "/admin/settings", label: "Настройки портала", icon: "settings" },
 ];
 
 export default function DomUchitelyaAdmin({

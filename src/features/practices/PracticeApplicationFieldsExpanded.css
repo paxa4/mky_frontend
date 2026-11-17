@@ -1,0 +1,168 @@
+.practice-application {
+  display: grid;
+  gap: 24px;
+}
+
+.practice-application-section {
+  display: grid;
+  gap: 14px;
+  padding-top: 20px;
+  border-top: 1px solid #dbe4e8;
+}
+
+.practice-application-section h2 {
+  margin: 0;
+  color: #1f5073;
+  font-size: 21px;
+}
+
+.practice-application-section > p {
+  margin: -8px 0 0;
+  color: #536775;
+  font-size: 14px;
+  line-height: 1.55;
+}
+
+.practice-application-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px 16px;
+}
+
+.practice-application-field {
+  align-content: start;
+  min-width: 0;
+}
+
+.practice-application-field small {
+  color: #627684;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+.practice-application-field-wide {
+  grid-column: 1 / -1;
+}
+
+.practice-application-options {
+  display: grid;
+  gap: 10px;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.practice-application-options legend {
+  padding: 0;
+  color: #344b5b;
+  font-size: 13px;
+  font-weight: 850;
+}
+
+.practice-application-options > p {
+  margin: -5px 0 0;
+  color: #627684;
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.practice-application-options > div {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px 16px;
+}
+
+.practice-application-option {
+  display: flex !important;
+  align-items: flex-start;
+  gap: 9px !important;
+  min-width: 0;
+  color: #334b5a !important;
+  font-size: 13px !important;
+  font-weight: 650 !important;
+  line-height: 1.4;
+}
+
+.practice-application-option input {
+  width: 17px !important;
+  min-width: 17px;
+  min-height: 17px !important;
+  height: 17px;
+  margin: 1px 0 0;
+  padding: 0 !important;
+  accent-color: #19789c;
+}
+
+.practice-application-note {
+  display: grid;
+  align-content: center;
+  gap: 5px;
+  padding: 10px 12px;
+  border-left: 3px solid #19789c;
+  background: #f0f6f8;
+  color: #334b5a;
+  font-size: 13px;
+}
+
+.practice-application-note span {
+  color: #627684;
+  font-size: 12px;
+}
+
+.practice-application-repeat {
+  width: fit-content;
+}
+
+.practice-application-detail-list {
+  display: grid;
+  gap: 13px;
+  margin: 0;
+}
+
+.practice-application-detail-list > div {
+  display: grid;
+  grid-template-columns: minmax(150px, 0.35fr) minmax(0, 1fr);
+  gap: 12px;
+}
+
+.practice-application-detail-list dt {
+  color: #5f7380;
+  font-size: 13px;
+  font-weight: 750;
+}
+
+.practice-application-detail-list dd {
+  min-width: 0;
+  margin: 0;
+  color: #263c4b;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.6;
+  white-space: pre-line;
+  overflow-wrap: anywhere;
+}
+
+.practice-detail-type {
+  margin: 0 0 8px;
+  color: #5f7380;
+  font-size: 14px;
+  font-weight: 750;
+}
+
+@media (max-width: 640px) {
+  .practice-application-grid,
+  .practice-application-options > div {
+    grid-template-columns: 1fr;
+  }
+
+  .practice-application-field-wide {
+    grid-column: auto;
+  }
+
+  .practice-application-detail-list > div {
+    grid-template-columns: 1fr;
+    gap: 4px;
+  }
+}

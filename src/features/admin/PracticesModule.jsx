@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { API_BASE } from "../../constants/index.js";
 import { authHeaders, getStoredAccessToken } from "../../utils/authHeaders.js";
+import { PracticeLocationPicker } from "../practices/PracticeMap.jsx";
 import { PRACTICE_LEVELS, PRACTICE_STATUS_LABELS, PRACTICE_TOPICS } from "../practices/practiceTaxonomy.js";
 
-const EMPTY_PRACTICE = { title: "", slug: "", summary: "", description: "", topic: "", level: "Начальный", organization: "", municipality: "", author_name: "", author_email: "", target_audience: "", implementation_period: "", results: "", materials: "", cover_image_url: "", status: "draft" };
+const EMPTY_PRACTICE = { title: "", slug: "", summary: "", description: "", topic: "", level: "Начальный", organization: "", municipality: "", latitude: null, longitude: null, author_name: "", author_email: "", target_audience: "", implementation_period: "", results: "", materials: "", cover_image_url: "", status: "draft" };
 
 function normalizePractice(practice) {
   const materials = Array.isArray(practice?.materials) ? practice.materials.map((item) => item?.url || item?.title || "").filter(Boolean).join("\n") : "";
@@ -106,6 +107,7 @@ function PracticeEditor({ practice, setPractice, onSubmit, onCancel, saving, err
         <label>Название *<input required value={practice.title} onChange={(event) => update("title", event.target.value)} /></label>
         <label>Краткое описание *<textarea required rows="3" value={practice.summary} onChange={(event) => update("summary", event.target.value)} /></label>
         <div className="practice-admin-form-grid"><label>Направление *<select required value={practice.topic} onChange={(event) => update("topic", event.target.value)}><option value="">Выберите направление</option>{PRACTICE_TOPICS.map((topic) => <option key={topic} value={topic}>{topic}</option>)}</select></label><label>Уровень<select value={practice.level} onChange={(event) => update("level", event.target.value)}>{PRACTICE_LEVELS.map((level) => <option key={level} value={level}>{level}</option>)}</select></label><label>Статус<select value={practice.status} onChange={(event) => update("status", event.target.value)}>{Object.entries(PRACTICE_STATUS_LABELS).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label><label>Организация *<input required value={practice.organization} onChange={(event) => update("organization", event.target.value)} /></label><label>Муниципалитет<input value={practice.municipality || ""} onChange={(event) => update("municipality", event.target.value)} /></label><label>Автор *<input required value={practice.author_name} onChange={(event) => update("author_name", event.target.value)} /></label><label>Email автора<input type="email" value={practice.author_email || ""} onChange={(event) => update("author_email", event.target.value)} /></label><label>Период реализации<input value={practice.implementation_period || ""} onChange={(event) => update("implementation_period", event.target.value)} /></label><label>Целевая аудитория<input value={practice.target_audience || ""} onChange={(event) => update("target_audience", event.target.value)} /></label></div>
+        <PracticeLocationPicker latitude={practice.latitude} longitude={practice.longitude} query={practice.municipality || practice.organization} onChange={({ latitude, longitude }) => setPractice((current) => ({ ...current, latitude, longitude }))} />
         <label>Описание практики *<textarea required rows="9" value={practice.description} onChange={(event) => update("description", event.target.value)} /></label>
         <label>Результаты<textarea rows="5" value={practice.results || ""} onChange={(event) => update("results", event.target.value)} /></label>
         <label>Ссылки на материалы<textarea rows="4" placeholder="По одной ссылке в строке" value={practice.materials} onChange={(event) => update("materials", event.target.value)} /></label>
@@ -147,6 +149,7 @@ const ADMIN_PRACTICES_CSS = `
   .practice-admin-form { display: grid; gap: 16px; max-width: 1040px; padding: 22px; border: 1px solid #e5ebef; border-radius: 12px; background: #fff; }
   .practice-admin-form-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }
   .practice-admin-form-actions { display: flex; justify-content: flex-end; gap: 10px; }
+  .practice-location-clear { justify-self: start; }
   .practice-admin-form .practice-admin-primary:disabled { opacity: .6; cursor: wait; }
   @media (max-width: 820px) { .practice-admin-form-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
   @media (max-width: 560px) { .practice-admin-form-grid { grid-template-columns: 1fr; } .practice-admin-form { padding: 16px; } }

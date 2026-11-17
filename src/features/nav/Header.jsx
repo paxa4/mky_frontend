@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import {
   A11Y_EVENT,
@@ -8,7 +8,8 @@ import {
   saveAccessibilitySettings,
 } from "../../accessibility.js";
 import Logo from "../../components/Logo.jsx";
-import MegaMenu from "./MegaMenu.jsx";
+import { API_BASE } from "../../constants/index.js";
+import MegaMenu, { PUBLIC_MENU_SEARCH_INDEX } from "./MegaMenu.jsx";
 
 const MAIN_NAV_ITEMS = [
   { label: "Главная", href: "/" },
@@ -40,6 +41,57 @@ function SearchIcon() {
     </svg>
   );
 }
+
+function normalizeSearchText(value) {
+  return String(value || "")
+    .toLocaleLowerCase("ru-RU")
+    .replaceAll("ё", "е")
+    .replace(/[-_/]+/g, " ")
+    .replace(/[^\p{L}\p{N}\s]/gu, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function getPageSuggestions(query) {
+  const normalizedQuery = normalizeSearchText(query);
+  if (!normalizedQuery) return [];
+  const queryWords = normalizedQuery.split(" ");
+
+  return PUBLIC_MENU_SEARCH_INDEX.map((page) => {
+    const text = normalizeSearchText(`${page.label} ${page.path} ${page.section || ""} ${page.description || ""}`);
+    const matchedWords = queryWords.filter((word) => text.includes(word)).length;
+    const score = text.includes(normalizedQuery)
+      ? 1
+      : queryWords.length ? matchedWords / queryWords.length * 0.7 : 0;
+    return {
+      type: "page",
+      title: page.label,
+      url: page.path,
+      section: page.section || "Разделы сайта",
+      description: page.description || "",
+      score,
+    };
+  })
+    .filter((item) => item.score > 0)
+    .sort((left, right) => right.score - left.score || left.title.localeCompare(right.title, "ru"));
+}
+
+function mergeSearchSuggestions(items) {
+  const unique = new Map();
+  items.forEach((item) => {
+    if (!item?.url || !item?.title) return;
+    const key = `${item.type}:${item.url}`;
+    if (!unique.has(key) || Number(item.score || 0) > Number(unique.get(key).score || 0)) {
+      unique.set(key, item);
+    }
+  });
+  return [...unique.values()]
+    .sort((left, right) => Number(right.score || 0) - Number(left.score || 0)
+      || String(left.title).localeCompare(String(right.title), "ru"))
+    .slice(0, 6);
+}
+
+const SEARCH_RESULT_LABELS = { page: "Раздел", article: "Материал", practice: "Практика" };
 
 function EyeIcon() {
   return (
@@ -86,6 +138,10 @@ export default function Header({ onGoAuth, onGoAdmin, onGoProfile, currentUser }
   const [menuOpen, setMenuOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const [searchSuggestions, setSearchSuggestions] = useState([]);
+  const [searchSuggestionsLoading, setSearchSuggestionsLoading] = useState(false);
+  const [searchActiveIndex, setSearchActiveIndex] = useState(-1);
+  const [searchFocused, setSearchFocused] = useState(false);
   const [a11yPanelOpen, setA11yPanelOpen] = useState(false);
   const [a11ySettings, setA11ySettings] = useState(() => readAccessibilitySettings());
   const a11yMode = a11ySettings.enabled;
@@ -99,6 +155,49 @@ export default function Header({ onGoAuth, onGoAdmin, onGoProfile, currentUser }
   const currentRole = typeof currentUser?.role === "object" ? currentUser.role?.role_name : currentUser?.role;
   const canShowAdminButton = Boolean(currentUser && onGoAdmin && (currentRole === "admin" || currentRole === "methodist" || currentRole === "domu_editor"));
   const canShowTpmpkCabinetButton = currentRole === "operator";
+  const showSearchSuggestions = searchOpen && searchFocused && searchQuery.trim().length >= 2;
+
+  useEffect(() => {
+    const query = searchQuery.trim();
+    if (!searchOpen || query.length < 2) {
+      setSearchSuggestions([]);
+      setSearchSuggestionsLoading(false);
+      setSearchActiveIndex(-1);
+      return undefined;
+    }
+
+    const pageSuggestions = getPageSuggestions(query);
+    setSearchSuggestions(pageSuggestions.slice(0, 6));
+    setSearchSuggestionsLoading(true);
+    setSearchActiveIndex(-1);
+
+    const controller = new AbortController();
+    const timer = window.setTimeout(async () => {
+      try {
+        const params = new URLSearchParams({ q: query, type: "all", limit: "8" });
+        const response = await fetch(`${API_BASE}/api/search/?${params}`, { signal: controller.signal });
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        const data = await response.json();
+        if (!controller.signal.aborted) {
+          setSearchSuggestions(mergeSearchSuggestions([
+            ...pageSuggestions,
+            ...(Array.isArray(data.results) ? data.results : []),
+          ]));
+        }
+      } catch (error) {
+        if (error.name !== "AbortError" && !controller.signal.aborted) {
+          setSearchSuggestions(mergeSearchSuggestions(pageSuggestions));
+        }
+      } finally {
+        if (!controller.signal.aborted) setSearchSuggestionsLoading(false);
+      }
+    }, 300);
+
+    return () => {
+      window.clearTimeout(timer);
+      controller.abort();
+    };
+  }, [searchOpen, searchQuery]);
 
   useEffect(() => {
     const update = () => setScrolled(window.scrollY > 8);
@@ -155,11 +254,6 @@ export default function Header({ onGoAuth, onGoAdmin, onGoProfile, currentUser }
     setA11ySettings(enableAccessibilityMode());
   }
 
-  const navSearchIndex = useMemo(
-    () => MAIN_NAV_ITEMS.map((item) => ({ ...item, search: item.label.toLowerCase() })),
-    [],
-  );
-
   function goPath(path) {
     if (!path) return;
     setMenuOpen(false);
@@ -172,22 +266,26 @@ export default function Header({ onGoAuth, onGoAdmin, onGoProfile, currentUser }
   }
 
   function executeSearch() {
-    const normalized = searchQuery.trim().toLowerCase();
-    if (!normalized) return;
+    const value = searchQuery.trim();
+    if (!value) return;
 
-    if (normalized.startsWith("/")) {
-      navigate(normalized);
+    if (value.startsWith("/")) {
+      navigate(value);
       setSearchOpen(false);
+      setSearchFocused(false);
       return;
     }
 
-    const byPrefix = navSearchIndex.find((item) => item.search.startsWith(normalized));
-    const byContains = navSearchIndex.find((item) => item.search.includes(normalized));
-    const target = byPrefix || byContains;
-    if (target) {
-      goPath(target.href);
-      setSearchOpen(false);
-    }
+    navigate(`/search?q=${encodeURIComponent(value)}`);
+    setSearchOpen(false);
+    setSearchFocused(false);
+  }
+
+  function chooseSearchSuggestion(item) {
+    navigate(item.url);
+    setSearchOpen(false);
+    setSearchFocused(false);
+    setSearchActiveIndex(-1);
   }
 
   function onSearchSubmit(event) {
@@ -196,9 +294,25 @@ export default function Header({ onGoAuth, onGoAdmin, onGoProfile, currentUser }
   }
 
   function onSearchKeyDown(event) {
-    if (event.key !== "Enter") return;
-    event.preventDefault();
-    executeSearch();
+    if (event.key === "ArrowDown" && showSearchSuggestions && searchSuggestions.length) {
+      event.preventDefault();
+      setSearchActiveIndex((current) => (current + 1) % searchSuggestions.length);
+      return;
+    }
+    if (event.key === "ArrowUp" && showSearchSuggestions && searchSuggestions.length) {
+      event.preventDefault();
+      setSearchActiveIndex((current) => (current <= 0 ? searchSuggestions.length - 1 : current - 1));
+      return;
+    }
+    if (event.key === "Enter") {
+      if (showSearchSuggestions && searchActiveIndex >= 0) {
+        event.preventDefault();
+        chooseSearchSuggestion(searchSuggestions[searchActiveIndex]);
+        return;
+      }
+      event.preventDefault();
+      executeSearch();
+    }
   }
 
   return (
@@ -342,6 +456,7 @@ export default function Header({ onGoAuth, onGoAdmin, onGoProfile, currentUser }
           transform: translateX(24px) scaleX(0.95);
           transform-origin: right center;
           transition: opacity 0.18s ease, visibility 0.18s ease, transform 0.2s ease;
+          z-index: 3;
         }
 
         .header-main-area.search-mode .header-search-panel {
@@ -400,6 +515,70 @@ export default function Header({ onGoAuth, onGoAdmin, onGoProfile, currentUser }
 
         .header-search-submit {
           color: #1F5073;
+        }
+
+        .header-search-suggestions {
+          position: absolute;
+          top: calc(100% + 8px);
+          left: 0;
+          right: 0;
+          z-index: 4;
+          max-height: min(60vh, 420px);
+          overflow-y: auto;
+          padding: 7px;
+          border: 1px solid rgba(31, 80, 115, 0.2);
+          border-radius: 8px;
+          background: #fff;
+          box-shadow: 0 14px 34px rgba(20, 50, 70, 0.2);
+        }
+
+        .header-search-suggestion,
+        .header-search-all {
+          width: 100%;
+          min-width: 0;
+          display: grid;
+          gap: 3px;
+          padding: 10px 12px;
+          border: 0;
+          border-radius: 6px;
+          background: transparent;
+          color: #1F5073;
+          text-align: left;
+          cursor: pointer;
+        }
+
+        .header-search-suggestion:hover,
+        .header-search-suggestion.is-active,
+        .header-search-all:hover {
+          background: #eaf3f6;
+        }
+
+        .header-search-suggestion-title {
+          overflow: hidden;
+          color: #173c56;
+          font-size: 14px;
+          font-weight: 750;
+          line-height: 1.35;
+          text-overflow: ellipsis;
+          white-space: nowrap;
+        }
+
+        .header-search-suggestion-meta,
+        .header-search-suggestions-state {
+          color: #60798a;
+          font-size: 12px;
+          line-height: 1.35;
+        }
+
+        .header-search-suggestions-state { padding: 10px 12px; }
+
+        .header-search-all {
+          margin-top: 4px;
+          border-top: 1px solid #dbe6eb;
+          border-radius: 0;
+          color: #1F5073;
+          font-size: 13px;
+          font-weight: 750;
         }
 
         .header-search-btn svg,
@@ -1017,7 +1196,14 @@ export default function Header({ onGoAuth, onGoAdmin, onGoProfile, currentUser }
                 value={searchQuery}
                 placeholder="Поиск по сайту"
                 aria-label="Поиск по сайту"
+                role="combobox"
+                aria-autocomplete="list"
+                aria-expanded={showSearchSuggestions}
+                aria-controls="header-search-suggestions"
+                aria-activedescendant={searchActiveIndex >= 0 ? `header-search-option-${searchActiveIndex}` : undefined}
                 onChange={(event) => setSearchQuery(event.target.value)}
+                onFocus={() => setSearchFocused(true)}
+                onBlur={() => setSearchFocused(false)}
                 onKeyDown={onSearchKeyDown}
               />
               <button
@@ -1028,6 +1214,32 @@ export default function Header({ onGoAuth, onGoAdmin, onGoProfile, currentUser }
               >
                 <SearchIcon />
               </button>
+              {showSearchSuggestions && (
+                <div className="header-search-suggestions" id="header-search-suggestions" role="listbox" aria-label="Варианты поиска">
+                  {searchSuggestions.map((item, index) => (
+                    <button
+                      id={`header-search-option-${index}`}
+                      key={`${item.type}:${item.url}`}
+                      className={`header-search-suggestion${index === searchActiveIndex ? " is-active" : ""}`}
+                      type="button"
+                      role="option"
+                      aria-selected={index === searchActiveIndex}
+                      onMouseDown={(event) => event.preventDefault()}
+                      onClick={() => chooseSearchSuggestion(item)}
+                    >
+                      <span className="header-search-suggestion-title">{item.title}</span>
+                      <span className="header-search-suggestion-meta">
+                        {[SEARCH_RESULT_LABELS[item.type] || "Раздел", item.section].filter(Boolean).join(" · ")}
+                      </span>
+                    </button>
+                  ))}
+                  {searchSuggestionsLoading && <div className="header-search-suggestions-state" role="status">Ищем материалы…</div>}
+                  {!searchSuggestionsLoading && !searchSuggestions.length && <div className="header-search-suggestions-state">Совпадений пока нет</div>}
+                  <button className="header-search-all" type="button" onMouseDown={(event) => event.preventDefault()} onClick={executeSearch}>
+                    Все результаты по запросу «{searchQuery.trim()}»
+                  </button>
+                </div>
+              )}
               <button
                 className="header-search-close"
                 type="button"

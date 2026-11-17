@@ -1,5 +1,12 @@
 export const DOMU_ARTICLE_SECTIONS = [
   {
+    value: "meropriyatiya",
+    path: "/dom-uchitelya/meropriyatiya/",
+    title: "Мероприятия",
+    text: "Анонсы встреч, семинаров, мастер-классов и городских событий для педагогов.",
+    icon: "calendar",
+  },
+  {
     value: "master-klassy",
     path: "/dom-uchitelya/master-klassy/",
     title: "Мастер-классы",
@@ -70,12 +77,6 @@ export const DOMU_SECTIONS = [
     title: "О структурном подразделении",
     text: "Сведения о задачах, формате работы и городских педагогических инициативах Дома учителя.",
     icon: "people",
-  },
-  {
-    path: "/dom-uchitelya/meropriyatiya/",
-    title: "Мероприятия",
-    text: "Анонсы встреч, семинаров, мастер-классов и городских событий для педагогов.",
-    icon: "calendar",
   },
   {
     path: "/dom-uchitelya/kontaktnaya-informaciya/",

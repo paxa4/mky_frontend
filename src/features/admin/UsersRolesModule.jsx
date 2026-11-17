@@ -13,7 +13,7 @@ const emptyForm = {
   role: "user",
 };
 
-const ROLE_ORDER = ["admin", "methodist", "metodist_editor", "operator", "tpmpk_admin", "tpmpk_operator", "domu_editor", "user"];
+const ROLE_ORDER = ["admin", "methodist", "metodist_editor", "operator", "tpmpk_admin", "tpmpk_operator", "domu_editor", "practice_expert", "user"];
 
 const ROLE_META = {
   admin: { accent: "#19789c", description: "Полный административный доступ" },
@@ -23,6 +23,7 @@ const ROLE_META = {
   tpmpk_admin: { accent: "#004f75", description: "Администрирование раздела ТПМПК" },
   tpmpk_operator: { accent: "#004f75", description: "Оператор раздела ТПМПК" },
   domu_editor: { accent: "#19789c", description: "Публикации раздела «Дом учителя»" },
+  practice_expert: { accent: "#0e7490", description: "Экспертная оценка образовательных практик" },
   user: { accent: "#64748b", description: "Базовая роль пользователя" },
 };
 
@@ -39,7 +40,7 @@ const MODULE_DEFINITIONS = [
   { key: "users_roles", label: "Пользователи", description: "Учётные записи и права доступа" },
   { key: "tpmpk", label: "Кабинет ТПМПК", description: "Расписание, слоты и записи" },
   { key: "audit_log", label: "Журнал действий", description: "Просмотр действий пользователей" },
-  { key: "portal_settings", label: "Настройки портала", description: "Административные параметры системы" },
+  { key: "practice_expert", label: "Экспертные заключения", description: "Публикация заключений по практикам" },
 ];
 
 const PERMISSION_OPTIONS = [
@@ -136,7 +137,16 @@ function auditValue(value, field) {
 function formatAuditDetails(item) {
   const details = item?.details || {};
   if (Array.isArray(details.changes) && details.changes.length) {
-    return details.changes.map((change) => {
+    const roleWasChanged = item?.entity_type === "user"
+      && item?.action === "Изменение пользователя"
+      && details.changes.some((change) => change.field === "role");
+    const target = details.after || details.before || {};
+    const targetName = [target.last_name, target.first_name, target.middle_name].filter(Boolean).join(" ");
+    const targetIdentity = [targetName, target.email].filter(Boolean).join(" · ");
+    const targetDetails = roleWasChanged
+      ? `Пользователь: ${targetIdentity || `ID ${item.entity_id}`}; `
+      : "";
+    const changes = details.changes.map((change) => {
       if (change.module) {
         const module = MODULE_DEFINITIONS.find((definition) => definition.key === change.module);
         return `${module?.label || change.module}: ${AUDIT_PERMISSION_LABELS[change.from] || "нет"} -> ${AUDIT_PERMISSION_LABELS[change.to] || "нет"}`;
@@ -144,6 +154,7 @@ function formatAuditDetails(item) {
       const label = AUDIT_FIELD_LABELS[change.field] || change.field;
       return `${label}: ${auditValue(change.from, change.field)} → ${auditValue(change.to, change.field)}`;
     }).join("; ");
+    return `${targetDetails}${changes}`;
   }
   if (details.role) return `Роль: ${getRoleLabel(details.role)}`;
   if (details.email) return `Email: ${details.email}`;

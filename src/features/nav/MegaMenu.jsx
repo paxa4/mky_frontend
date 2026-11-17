@@ -32,7 +32,9 @@ const METHODICAL_LINKS = [
   link("Воспитательное пространство", "/vospitatelnoe-prostranstvo/"),
 ];
 
-const MEGA_MENU_GROUPS = [
+// Shared with the public search page as the canonical list of visible sections.
+// eslint-disable-next-line react-refresh/only-export-components
+export const MEGA_MENU_GROUPS = [
   {
     id: "quick",
     groupTitle: "Быстрый переход",
@@ -176,6 +178,18 @@ const ACTION_LINKS = [
   link("Новости", "/novosti/"),
   link("Методическое пространство", "/metodicheskoe-prostranstvo/"),
 ];
+
+// eslint-disable-next-line react-refresh/only-export-components
+export const PUBLIC_MENU_SEARCH_INDEX = [
+  ...MEGA_MENU_GROUPS.flatMap((group) => group.links.map((item) => ({
+    ...item,
+    section: group.groupTitle,
+    description: group.description,
+    type: "page",
+  }))),
+  ...ACTION_LINKS.map((item) => ({ ...item, section: "Быстрый переход", type: "page" })),
+]
+  .filter((item, index, items) => items.findIndex((candidate) => candidate.path === item.path) === index);
 
 function normalizePath(pathname) {
   if (!pathname) return "/";

@@ -57,7 +57,7 @@ function publicPageNode(section) {
 }
 
 function publicPageGroup(rootPath, label, { includeRoot = false } = {}) {
-  const root = SECTION_TREE.find((section) => section.path === rootPath);
+  const root = findSectionByPath(rootPath);
   if (!root?.children?.length) return null;
   return node(`page-group:${rootPath}`, label || root.title, (includeRoot ? [root] : root.children).map(publicPageNode), {
     selectable: false,
@@ -96,7 +96,10 @@ export function buildArticleSectionTree({ allowedSubjects = METHODIKA_SUBJECTS, 
     node("home", ROOT_LABELS.home, [], { root: "home", value: "home" }),
     branchFromOptions("domu", ROOT_LABELS.domu, DOMU_SECTIONS),
     methodikaBranch(allowedSubjects, methodikaOnly),
-    branchFromOptions("konkursy", ROOT_LABELS.konkursy, KONKURSY_SECTIONS),
+    node("konkursy:root", ROOT_LABELS.konkursy, [
+      ...optionNodes("konkursy", KONKURSY_SECTIONS),
+      publicPageGroup("/konkursy/dlya-pedagogov/", "Страницы сайта", { includeRoot: true }),
+    ].filter(Boolean), { root: "konkursy", value: "root", selectable: false }),
     branchFromOptions("deyatelnost", ROOT_LABELS.deyatelnost, DEYATELNOST_SECTIONS),
     branchFromOptions("archiv", ROOT_LABELS.archiv, ARCHIV_SECTIONS),
     node("profile-pages:root", "Другие профильные разделы", PAGE_GROUP_ROOTS.flatMap(([path, label]) => {

@@ -7,6 +7,7 @@ export const ROLE_LABELS = {
   methodist: "Методист",
   operator: "Психолог",
   domu_editor: "Редактор Дома учителя",
+  practice_expert: "Эксперт практик",
   admin: "Администратор",
 };
 
@@ -24,7 +25,7 @@ export const DEFAULT_ROLE_PERMISSIONS = {
     users_roles: "edit",
     tpmpk: "edit",
     audit_log: "view",
-    portal_settings: "edit",
+    practice_expert: "none",
   },
   methodist: {
     articles: "edit",
@@ -33,7 +34,7 @@ export const DEFAULT_ROLE_PERMISSIONS = {
     users_roles: "none",
     tpmpk: "none",
     audit_log: "view",
-    portal_settings: "none",
+    practice_expert: "none",
   },
   metodist_editor: {
     articles: "edit",
@@ -42,7 +43,7 @@ export const DEFAULT_ROLE_PERMISSIONS = {
     users_roles: "none",
     tpmpk: "none",
     audit_log: "view",
-    portal_settings: "none",
+    practice_expert: "none",
   },
   operator: {
     articles: "none",
@@ -51,7 +52,7 @@ export const DEFAULT_ROLE_PERMISSIONS = {
     users_roles: "none",
     tpmpk: "edit",
     audit_log: "view",
-    portal_settings: "none",
+    practice_expert: "none",
   },
   tpmpk_admin: {
     articles: "none",
@@ -60,7 +61,7 @@ export const DEFAULT_ROLE_PERMISSIONS = {
     users_roles: "none",
     tpmpk: "edit",
     audit_log: "view",
-    portal_settings: "none",
+    practice_expert: "none",
   },
   tpmpk_operator: {
     articles: "none",
@@ -69,7 +70,7 @@ export const DEFAULT_ROLE_PERMISSIONS = {
     users_roles: "none",
     tpmpk: "edit",
     audit_log: "view",
-    portal_settings: "none",
+    practice_expert: "none",
   },
   domu_editor: {
     articles: "edit",
@@ -78,7 +79,7 @@ export const DEFAULT_ROLE_PERMISSIONS = {
     users_roles: "none",
     tpmpk: "none",
     audit_log: "view",
-    portal_settings: "none",
+    practice_expert: "none",
   },
   user: {
     articles: "none",
@@ -87,7 +88,16 @@ export const DEFAULT_ROLE_PERMISSIONS = {
     users_roles: "none",
     tpmpk: "none",
     audit_log: "none",
-    portal_settings: "none",
+    practice_expert: "none",
+  },
+  practice_expert: {
+    articles: "none",
+    certificates: "none",
+    certificate_templates: "none",
+    users_roles: "none",
+    tpmpk: "none",
+    audit_log: "none",
+    practice_expert: "edit",
   },
 };
 

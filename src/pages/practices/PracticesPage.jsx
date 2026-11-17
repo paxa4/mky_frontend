@@ -5,6 +5,8 @@ import Footer from "../../components/Footer.jsx";
 import Breadcrumbs from "../../components/Breadcrumbs.jsx";
 import { API_BASE } from "../../constants/index.js";
 import { authHeaders } from "../../utils/authHeaders.js";
+import { hasPermission } from "../../auth.js";
+import { PracticeLocationPicker, PracticeLocationsMap } from "../../features/practices/PracticeMap.jsx";
 import { PRACTICE_LEVELS, PRACTICE_TOPICS } from "../../features/practices/practiceTaxonomy.js";
 
 const EMPTY_FILTERS = { q: "", topic: "", level: "", organization: "" };
@@ -93,11 +95,16 @@ function FilterForm({ filters, onChange, onSubmit, onReset }) {
 }
 
 export default function PracticesPage(props) {
+  const [activeView, setActiveView] = useState("catalog");
   const [filters, setFilters] = useState(EMPTY_FILTERS);
   const [items, setItems] = useState([]);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [statistics, setStatistics] = useState(null);
+  const [mapData, setMapData] = useState(null);
+  const [viewLoading, setViewLoading] = useState(false);
+  const [viewError, setViewError] = useState("");
 
   const loadPractices = useCallback(async (activeFilters) => {
     setLoading(true);
@@ -122,6 +129,27 @@ export default function PracticesPage(props) {
   }, []);
 
   useEffect(() => { void loadPractices(EMPTY_FILTERS); }, [loadPractices]);
+
+  useEffect(() => {
+    if (activeView === "catalog") return undefined;
+    const endpoint = activeView === "statistics" ? "statistics/" : "map/";
+    let cancelled = false;
+    setViewLoading(true);
+    setViewError("");
+    fetch(`${API_BASE}/api/practices/${endpoint}`)
+      .then((response) => {
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        return response.json();
+      })
+      .then((data) => {
+        if (cancelled) return;
+        if (activeView === "statistics") setStatistics(data);
+        else setMapData(data);
+      })
+      .catch(() => { if (!cancelled) setViewError("Не удалось загрузить данные раздела."); })
+      .finally(() => { if (!cancelled) setViewLoading(false); });
+    return () => { cancelled = true; };
+  }, [activeView]);
 
   function updateFilter(key, value) {
     setFilters((current) => ({ ...current, [key]: value }));
@@ -148,26 +176,102 @@ export default function PracticesPage(props) {
         <Link className="practice-primary-button practice-submit-link" to="/praktiki/podat/">Подать практику</Link>
       </section>
 
-      <section className="practices-toolbar" aria-label="Фильтры каталога">
-        <FilterForm filters={filters} onChange={updateFilter} onSubmit={submitFilters} onReset={resetFilters} />
-      </section>
+      <div className="practice-view-tabs" role="group" aria-label="Разделы каталога практик">
+        {[["catalog", "Практики"], ["statistics", "Статистика"], ["map", "Карта"]].map(([key, label]) => (
+          <button key={key} type="button" aria-pressed={activeView === key} className={activeView === key ? "is-active" : ""} onClick={() => setActiveView(key)}>{label}</button>
+        ))}
+      </div>
 
-      <section className="practices-results">
-        <div className="practices-results-head">
-          <div><h2>Опубликованные практики</h2><span>{total} материалов</span></div>
-        </div>
-        {loading && <div className="practice-message">Загрузка каталога...</div>}
-        {!loading && error && <div className="practice-message practice-message-error">{error}</div>}
-        {!loading && !error && !items.length && <div className="practice-message">По выбранным параметрам практики не найдены.</div>}
-        {!loading && !error && items.length > 0 && <div className="practice-grid">{items.map((item) => <PracticeCard key={item.id} practice={item} />)}</div>}
-      </section>
+      {activeView === "catalog" && (
+        <>
+          <section className="practices-toolbar" aria-label="Фильтры каталога">
+            <FilterForm filters={filters} onChange={updateFilter} onSubmit={submitFilters} onReset={resetFilters} />
+          </section>
+          <section className="practices-results">
+            <div className="practices-results-head">
+              <div><h2>Опубликованные практики</h2><span>{total} материалов</span></div>
+            </div>
+            {loading && <div className="practice-message">Загрузка каталога...</div>}
+            {!loading && error && <div className="practice-message practice-message-error">{error}</div>}
+            {!loading && !error && !items.length && <div className="practice-message">По выбранным параметрам практики не найдены.</div>}
+            {!loading && !error && items.length > 0 && <div className="practice-grid">{items.map((item) => <PracticeCard key={item.id} practice={item} />)}</div>}
+          </section>
+        </>
+      )}
+
+      {activeView === "statistics" && (
+        <section className="practice-analytics-panel">
+          <div className="practices-results-head"><div><h2>Статистика практик</h2><span>{statistics?.total ?? 0} опубликовано</span></div></div>
+          {viewLoading && <div className="practice-message">Загрузка статистики...</div>}
+          {!viewLoading && viewError && <div className="practice-message practice-message-error">{viewError}</div>}
+          {!viewLoading && !viewError && statistics && <PracticeStatistics data={statistics} />}
+        </section>
+      )}
+
+      {activeView === "map" && (
+        <section className="practice-analytics-panel">
+          <div className="practices-results-head"><div><h2>География практик</h2><span>{mapData?.total ?? 0} с указанным местом реализации</span></div></div>
+          {viewLoading && <div className="practice-message">Загрузка карты...</div>}
+          {!viewLoading && viewError && <div className="practice-message practice-message-error">{viewError}</div>}
+          {!viewLoading && !viewError && mapData && <>
+            <p className="practice-map-counts">{mapData.total} практик на карте · {mapData.unlocated_total} без координат</p>
+            <PracticeLocationsMap items={mapData.items} />
+            {!mapData.total && <p className="practice-map-empty">У опубликованных практик пока не отмечено место реализации.</p>}
+          </>}
+        </section>
+      )}
     </PracticeLayout>
+  );
+}
+
+function PracticeStatistics({ data }) {
+  const levels = [
+    { key: "Начальный", color: "#eab308" },
+    { key: "Продвинутый", color: "#16a34a" },
+    { key: "Высший", color: "#2563eb" },
+  ];
+  const topicCounts = new Map((Array.isArray(data.by_topic) ? data.by_topic : []).map((topic) => [topic.topic, topic]));
+  const topics = [...PRACTICE_TOPICS.map((topic) => topicCounts.get(topic) || { topic, total: 0, levels: {} })];
+  topicCounts.forEach((topic, name) => {
+    if (!PRACTICE_TOPICS.includes(name)) topics.push(topic);
+  });
+  return (
+    <>
+      <div className="practice-stat-total"><strong>{data.total}</strong><span>опубликованных практик</span></div>
+      <div className="practice-stat-legend" aria-label="Уровни практик">
+        {levels.map((level) => <span key={level.key}><i style={{ backgroundColor: level.color }} />{level.key} · {data.by_level?.[level.key] || 0}</span>)}
+      </div>
+      {data.total > 0 && topics.length ? (
+        <div className="practice-stat-chart">
+          {topics.map((topic) => (
+            <div className="practice-stat-row" key={topic.topic}>
+              <span className="practice-stat-label" title={topic.topic}>{topic.topic}</span>
+              <div className="practice-stat-track" aria-label={`${topic.topic}: ${topic.total}`}>
+                {levels.map((level) => {
+                  const count = topic.levels?.[level.key] || 0;
+                  return count > 0 ? <span key={level.key} className="practice-stat-segment" title={`${level.key}: ${count}`} style={{ width: `${(count / topic.total) * 100}%`, backgroundColor: level.color }} /> : null;
+                })}
+              </div>
+              <strong>{topic.total}</strong>
+            </div>
+          ))}
+        </div>
+      ) : <div className="practice-message">Пока нет опубликованных практик для статистики.</div>}
+    </>
   );
 }
 
 export function PracticeDetailPage(props) {
   const { slug } = useParams();
+  const currentUser = props.currentUser;
   const [practice, setPractice] = useState(null);
+  const [conclusions, setConclusions] = useState([]);
+  const [conclusionDraft, setConclusionDraft] = useState("");
+  const [conclusionsLoading, setConclusionsLoading] = useState(true);
+  const [conclusionsError, setConclusionsError] = useState("");
+  const [conclusionSaving, setConclusionSaving] = useState(false);
+  const [conclusionError, setConclusionError] = useState("");
+  const [conclusionMessage, setConclusionMessage] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -185,6 +289,49 @@ export function PracticeDetailPage(props) {
     return () => { cancelled = true; };
   }, [slug]);
 
+  const loadConclusions = useCallback(async () => {
+    setConclusionsLoading(true);
+    setConclusionsError("");
+    try {
+      const response = await fetch(`${API_BASE}/api/practices/${encodeURIComponent(slug)}/conclusions/`, { headers: authHeaders() });
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      const data = await response.json();
+      const list = Array.isArray(data.items) ? data.items : [];
+      setConclusions(list);
+      setConclusionDraft(list.find((item) => item.is_mine)?.content || "");
+    } catch {
+      setConclusions([]);
+      setConclusionsError("Не удалось загрузить экспертные заключения.");
+    } finally {
+      setConclusionsLoading(false);
+    }
+  }, [slug, currentUser?.id]);
+
+  useEffect(() => { void loadConclusions(); }, [loadConclusions]);
+
+  async function saveConclusion(event) {
+    event.preventDefault();
+    setConclusionSaving(true);
+    setConclusionError("");
+    setConclusionMessage("");
+    try {
+      const response = await fetch(`${API_BASE}/api/practices/${encodeURIComponent(slug)}/conclusions/`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", ...authHeaders() },
+        body: JSON.stringify({ content: conclusionDraft }),
+      });
+      const data = await response.json().catch(() => ({}));
+      if (response.status === 403) throw new Error("У вашей учётной записи нет права публиковать экспертные заключения.");
+      if (!response.ok) throw new Error(Array.isArray(data.detail) ? data.detail.map((item) => item.msg).join("; ") : data.detail || "Не удалось сохранить заключение.");
+      setConclusionMessage("Заключение опубликовано.");
+      await loadConclusions();
+    } catch (saveError) {
+      setConclusionError(saveError.message || "Не удалось сохранить заключение.");
+    } finally {
+      setConclusionSaving(false);
+    }
+  }
+
   return (
     <PracticeLayout {...props} current={practice?.title}>
       {loading && <div className="practice-message">Загрузка практики...</div>}
@@ -198,6 +345,13 @@ export function PracticeDetailPage(props) {
             <div className="practice-detail-main">
               <DetailBlock title="Описание практики" value={practice.description} />
               <DetailBlock title="Результаты" value={practice.results} />
+              {practice.latitude != null && practice.longitude != null && (
+                <section className="practice-detail-section">
+                  <h2>Место реализации</h2>
+                  <p>{practice.municipality || practice.organization}</p>
+                  <PracticeLocationsMap items={[practice]} compact />
+                </section>
+              )}
               {Array.isArray(practice.materials) && practice.materials.length > 0 && (
                 <section className="practice-detail-section"><h2>Материалы</h2><ul className="practice-material-list">{practice.materials.map((material, index) => <li key={`${material.url || material.title || "material"}-${index}`}><a href={material.url} target="_blank" rel="noreferrer">{material.title || material.url}</a></li>)}</ul></section>
               )}
@@ -210,6 +364,31 @@ export function PracticeDetailPage(props) {
               <InfoRow label="Период реализации" value={practice.implementation_period} />
             </aside>
           </div>
+          <section className="practice-conclusions" aria-labelledby="practice-conclusions-heading">
+            <div className="practice-conclusions-heading">
+              <h2 id="practice-conclusions-heading">Заключения экспертов</h2>
+              <span>{conclusions.length}</span>
+            </div>
+            {conclusionsLoading && <p className="practice-conclusions-empty">Загрузка заключений...</p>}
+            {!conclusionsLoading && conclusionsError && <p className="practice-conclusions-empty" role="alert">{conclusionsError}</p>}
+            {!conclusionsLoading && !conclusionsError && conclusions.length === 0 && <p className="practice-conclusions-empty">Экспертных заключений пока нет.</p>}
+            {!conclusionsLoading && conclusions.length > 0 && <div className="practice-conclusions-list">
+              {conclusions.map((conclusion) => (
+                <article className="practice-conclusion" key={conclusion.id}>
+                  <div><strong>{conclusion.expert_name}</strong><time dateTime={conclusion.updated_at}>{formatPracticeDate(conclusion.updated_at || conclusion.created_at)}</time></div>
+                  <p>{conclusion.content}</p>
+                </article>
+              ))}
+            </div>}
+            {hasPermission(currentUser, "practice_expert", "edit") && (
+              <form className="practice-conclusion-form" onSubmit={saveConclusion}>
+                <label><span>{conclusions.some((item) => item.is_mine) ? "Изменить заключение" : "Ваше заключение"}</span><textarea required minLength={10} maxLength={10000} rows={6} value={conclusionDraft} onChange={(event) => setConclusionDraft(event.target.value)} placeholder="Оцените практику, её результаты и возможность распространения." /></label>
+                {conclusionError && <div className="practice-message-error" role="alert">{conclusionError}</div>}
+                {conclusionMessage && <div className="practice-form-success" role="status">{conclusionMessage}</div>}
+                <button className="practice-action" type="submit" disabled={conclusionSaving}>{conclusionSaving ? "Сохранение..." : "Опубликовать заключение"}</button>
+              </form>
+            )}
+          </section>
         </article>
       )}
     </PracticeLayout>
@@ -228,7 +407,7 @@ function InfoRow({ label, value }) {
 
 export function PracticeSubmitPage(props) {
   const navigate = useNavigate();
-  const [form, setForm] = useState({ title: "", summary: "", description: "", topic: "", level: "Начальный", organization: "", municipality: "", author_name: "", author_email: "", target_audience: "", implementation_period: "", results: "", cover_image_url: "", materials: "" });
+  const [form, setForm] = useState({ title: "", summary: "", description: "", topic: "", level: "Начальный", organization: "", municipality: "", latitude: null, longitude: null, author_name: "", author_email: "", target_audience: "", implementation_period: "", results: "", cover_image_url: "", materials: "" });
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
@@ -271,6 +450,7 @@ export function PracticeSubmitPage(props) {
             <label><span>Целевая аудитория</span><input value={form.target_audience} onChange={(event) => update("target_audience", event.target.value)} /></label>
             <label><span>Период реализации</span><input value={form.implementation_period} onChange={(event) => update("implementation_period", event.target.value)} /></label>
           </div>
+          <PracticeLocationPicker latitude={form.latitude} longitude={form.longitude} query={form.municipality || form.organization} onChange={({ latitude, longitude }) => setForm((current) => ({ ...current, latitude, longitude }))} />
           <label><span>Описание практики *</span><textarea required rows="8" value={form.description} onChange={(event) => update("description", event.target.value)} /></label>
           <label><span>Результаты</span><textarea rows="5" value={form.results} onChange={(event) => update("results", event.target.value)} /></label>
           <label><span>Ссылки на материалы</span><textarea rows="3" placeholder="По одной ссылке в строке" value={form.materials} onChange={(event) => update("materials", event.target.value)} /></label>
@@ -303,6 +483,10 @@ const PRACTICES_CSS = `
   .practice-secondary-button { border-color: #b8cbd5; background: #fff; color: #1f5073; }
   .practice-secondary-button:hover { border-color: #1f5073; }
   .practices-toolbar { margin: 20px 0 38px; padding: 20px; border: 1px solid var(--imcro-color-border); border-radius: 8px; background: var(--imcro-color-surface); box-shadow: var(--imcro-shadow-card); }
+  .practice-view-tabs { display: flex; gap: 4px; margin: 22px 0; border-bottom: 1px solid rgba(255,255,255,.35); }
+  .practice-view-tabs button { min-height: 44px; padding: 0 18px; border: 0; border-bottom: 3px solid transparent; background: transparent; color: rgba(255,255,255,.78); font: inherit; font-weight: 800; cursor: pointer; }
+  .practice-view-tabs button:hover, .practice-view-tabs button.is-active { color: #fff; }
+  .practice-view-tabs button.is-active { border-bottom-color: #facc15; }
   .practice-filters { display: grid; grid-template-columns: minmax(220px, 1.6fr) repeat(3, minmax(150px, 1fr)) auto; gap: 12px; align-items: end; }
   .practice-filters label, .practice-form label { display: grid; gap: 7px; color: var(--imcro-color-text-muted); font-size: 12px; font-weight: 850; }
   .practice-filters input, .practice-filters select, .practice-form input, .practice-form select, .practice-form textarea { width: 100%; min-height: 42px; border: 1px solid #b8cbd5; border-radius: 6px; padding: 9px 11px; background: #fff; color: var(--imcro-color-text); font: inherit; font-size: 14px; }
@@ -313,6 +497,21 @@ const PRACTICES_CSS = `
   .practices-results-head { display: flex; justify-content: space-between; align-items: end; margin-bottom: 16px; }
   .practices-results-head h2 { margin: 0; color: #fff; font-size: clamp(26px, 4vw, 40px); }
   .practices-results-head span { color: rgba(255,255,255,.82); font-weight: 750; }
+  .practice-analytics-panel { display: grid; gap: 18px; }
+  .practice-stat-total { display: flex; align-items: baseline; gap: 12px; color: #fff; }
+  .practice-stat-total strong { font-size: 34px; }
+  .practice-stat-total span, .practice-map-counts, .practice-map-empty { color: rgba(255,255,255,.86); font-weight: 750; }
+  .practice-stat-legend { display: flex; flex-wrap: wrap; gap: 12px 22px; color: #fff; font-size: 13px; font-weight: 750; }
+  .practice-stat-legend span { display: inline-flex; align-items: center; gap: 8px; }
+  .practice-stat-legend i { width: 12px; height: 12px; flex: 0 0 12px; border-radius: 2px; }
+  .practice-stat-chart { display: grid; gap: 0; border-top: 1px solid rgba(255,255,255,.32); }
+  .practice-stat-row { min-height: 48px; display: grid; grid-template-columns: minmax(180px, .9fr) minmax(80px, 2fr) 40px; align-items: center; gap: 14px; border-bottom: 1px solid rgba(255,255,255,.32); color: #fff; }
+  .practice-stat-label { overflow: hidden; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; font-size: 14px; font-weight: 700; }
+  .practice-stat-track { height: 20px; display: flex; overflow: hidden; border-radius: 2px; background: rgba(255,255,255,.22); }
+  .practice-stat-segment { min-width: 2px; height: 100%; }
+  .practice-stat-row > strong { text-align: right; }
+  .practice-map-counts { margin: 0; }
+  .practice-map-empty { margin: 0; }
   .practice-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr)); gap: 16px; }
   .practice-card { height: 360px; min-height: 360px; display: flex; flex-direction: column; gap: 14px; overflow: hidden; padding: 22px; border: 1px solid var(--imcro-color-border); border-radius: 8px; background: #fff; box-shadow: var(--imcro-shadow-card); }
   .practice-card-topline, .practice-detail-topline { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
@@ -339,6 +538,21 @@ const PRACTICES_CSS = `
   .practice-detail-section h2 { margin: 0 0 10px; color: #1f5073; font-size: 24px; }
   .practice-detail-section p { margin: 0; white-space: pre-line; line-height: 1.7; font-weight: 600; }
   .practice-detail-aside { align-self: start; display: grid; gap: 16px; padding: 20px; border-left: 3px solid #dcebf0; background: #f7fafb; }
+  .practice-detail-section .practice-map-frame { margin-top: 12px; }
+  .practice-conclusions { display: grid; gap: 16px; margin-top: 32px; padding-top: 24px; border-top: 1px solid #dce5ea; }
+  .practice-conclusions-heading { display: flex; align-items: center; gap: 10px; }
+  .practice-conclusions-heading h2 { margin: 0; color: #1f5073; font-size: 24px; }
+  .practice-conclusions-heading span { min-width: 26px; padding: 3px 8px; border-radius: 999px; background: #e6f2f5; color: #1f5073; text-align: center; font-size: 12px; font-weight: 850; }
+  .practice-conclusions-empty { margin: 0; color: var(--imcro-color-text-muted); }
+  .practice-conclusions-list { display: grid; gap: 12px; }
+  .practice-conclusion { padding: 16px; border-left: 3px solid #0e7490; background: #f5f9fa; }
+  .practice-conclusion > div { display: flex; justify-content: space-between; gap: 12px; color: #334155; }
+  .practice-conclusion time { flex: 0 0 auto; color: #64748b; font-size: 12px; }
+  .practice-conclusion p { margin: 10px 0 0; white-space: pre-line; line-height: 1.65; }
+  .practice-conclusion-form { display: grid; justify-items: start; gap: 12px; padding-top: 8px; }
+  .practice-conclusion-form label { width: 100%; display: grid; gap: 8px; color: #334155; font-weight: 800; }
+  .practice-conclusion-form textarea { width: 100%; border: 1px solid #b8cbd5; border-radius: 6px; padding: 11px; color: var(--imcro-color-text); font: inherit; line-height: 1.55; resize: vertical; }
+  .practice-conclusion-form .practice-action:disabled { opacity: .65; cursor: wait; }
   .practice-info-row { display: grid; gap: 4px; }
   .practice-material-list { display: grid; gap: 9px; margin: 0; padding-left: 19px; }
   .practice-material-list a { color: #1f5073; font-weight: 750; }
@@ -349,6 +563,7 @@ const PRACTICES_CSS = `
   .practice-form-actions .practice-primary-button { background: #1f5073; color: #fff; }
   .practice-form-actions .practice-primary-button:disabled { opacity: .6; cursor: wait; }
   @media (max-width: 960px) { .practice-filters { grid-template-columns: repeat(2, minmax(0, 1fr)); } .practice-filter-search { grid-column: span 2; } .practice-filter-actions { grid-column: span 2; } }
-  @media (max-width: 720px) { .practices-container { width: min(100% - 24px, var(--imcro-container-max, 1280px)); } .practices-hero { align-items: stretch; flex-direction: column; padding: 22px; } .practice-submit-link { width: fit-content; } .practice-filters, .practice-form-grid, .practice-detail-grid { grid-template-columns: 1fr; } .practice-filter-search, .practice-filter-actions { grid-column: auto; } .practice-detail, .practice-form-panel { padding: 20px; } .practice-detail-aside { border-left: 0; border-top: 3px solid #dcebf0; } }
+  .practice-location-clear { justify-self: start; }
+  @media (max-width: 720px) { .practices-container { width: min(100% - 24px, var(--imcro-container-max, 1280px)); } .practices-hero { align-items: stretch; flex-direction: column; padding: 22px; } .practice-submit-link { width: fit-content; } .practice-filters, .practice-form-grid, .practice-detail-grid { grid-template-columns: 1fr; } .practice-filter-search, .practice-filter-actions { grid-column: auto; } .practice-detail, .practice-form-panel { padding: 20px; } .practice-detail-aside { border-left: 0; border-top: 3px solid #dcebf0; } .practice-view-tabs { overflow-x: auto; } .practice-view-tabs button { flex: 1 0 auto; padding: 0 12px; } .practice-stat-row { grid-template-columns: minmax(90px, 1fr) minmax(50px, 1.3fr) 32px; gap: 8px; } .practice-stat-label { font-size: 12px; } .practice-conclusion > div { align-items: start; flex-direction: column; gap: 4px; } }
 `;
 
