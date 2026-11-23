@@ -3,6 +3,8 @@ import { Link } from "react-router-dom";
 import Footer from "../../components/Footer.jsx";
 import Header from "../../features/nav/Header.jsx";
 import Breadcrumbs from "../../components/Breadcrumbs.jsx";
+import useSiteContact from "../../features/contacts/useSiteContact.js";
+import { getDefaultSiteContact } from "../../features/contacts/siteContacts.js";
 import { getTpmpkPage } from "./tpmpkPagesData.js";
 
 function Seo({ title, description }) {
@@ -83,8 +85,19 @@ function Section({ section }) {
 
 export default function TpmpkInfoPage({ slug, currentUser, onGoAuth, onGoAdmin, onGoProfile }) {
   const page = getTpmpkPage(slug);
+  const contactPath = slug === "kontakty" ? "/tpmpk/kontakty/" : null;
+  const contactBlock = useSiteContact(contactPath, getDefaultSiteContact(contactPath));
 
   if (!page) return null;
+
+  const sections = slug === "kontakty" && contactBlock?.contacts?.length
+    ? page.sections.map((section) => section.type === "cards" && section.title === "Основные контакты"
+      ? {
+          ...section,
+          items: contactBlock.contacts.map((item) => ({ title: item.label, text: item.value })),
+        }
+      : section)
+    : page.sections;
 
   return (
     <div className={`ti-page ti-page--${page.slug}`}>
@@ -422,7 +435,7 @@ export default function TpmpkInfoPage({ slug, currentUser, onGoAuth, onGoAdmin, 
           </section>
 
           <div className="ti-content">
-            {page.sections.map((section) => <Section section={section} key={section.title} />)}
+            {sections.map((section) => <Section section={section} key={section.title} />)}
           </div>
         </div>
       </main>

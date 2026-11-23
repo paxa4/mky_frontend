@@ -10,6 +10,7 @@ const ICON_PATHS = {
   chat: "M4 5a3 3 0 0 1 3-3h10a3 3 0 0 1 3 3v7a3 3 0 0 1-3 3H9l-5 4V5Zm5 3h6M9 11h4",
   users: "M16 11a4 4 0 1 0-8 0m8 0a4 4 0 1 1-8 0m8 0c2.2.5 4 2.1 4 4v1H4v-1c0-1.9 1.8-3.5 4-4",
   audit: "M5 4h14v16H5V4Zm4 4h6M9 12h6M9 16h4",
+  contacts: "M4 5h16v14H4V5Zm3 4h6M7 13h10M7 16h7",
 };
 
 function AdminIcon({ name }) {

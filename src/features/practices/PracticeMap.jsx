@@ -27,6 +27,32 @@ function escapeMapHtml(value) {
   })[character]);
 }
 
+function practiceDetailHref(practice) {
+  return `/praktiki/${encodeURIComponent(practice.slug || practice.id)}/`;
+}
+
+function getPracticeBalloonBody(practice) {
+  const application = practice.application_data || {};
+  const address = practice.address || [
+    application.postal_code,
+    application.street,
+    application.house_number && `д. ${application.house_number}`,
+    application.building && `корп. ${application.building}`,
+  ].filter(Boolean).join(", ");
+  const summary = String(practice.summary || "").trim();
+  const briefSummary = summary.length > 200 ? `${summary.slice(0, 197).trimEnd()}…` : summary;
+  const details = [
+    practice.organization && `ОУ: ${practice.organization}`,
+    address && `Адрес: ${address}`,
+    practice.municipality && `Территория: ${practice.municipality}`,
+    practice.topic && `Направление: ${practice.topic}`,
+    practice.level && `Уровень: ${practice.level}`,
+    briefSummary && `Описание: ${briefSummary}`,
+  ].filter(Boolean).map(escapeMapHtml);
+  const detailLink = `<a href="${escapeMapHtml(practiceDetailHref(practice))}">Подробнее о практике</a>`;
+  return [...details, detailLink].join("<br />");
+}
+
 function getSearchHref(query, latitude, longitude) {
   if (validCoordinates(latitude, longitude)) return buildMapHref({ lat: Number(latitude), lon: Number(longitude) });
   const text = String(query || "Иркутск").trim();
@@ -253,10 +279,7 @@ export function PracticeLocationsMap({ items = [], compact = false }) {
             practiceId: String(practice.id),
             hintContent: escapeMapHtml(practice.title),
             balloonContentHeader: escapeMapHtml(practice.title),
-            balloonContentBody: [practice.organization, practice.municipality, practice.topic]
-              .filter(Boolean)
-              .map(escapeMapHtml)
-              .join("<br />"),
+            balloonContentBody: getPracticeBalloonBody(practice),
           }, {
             preset: String(practice.id) === String(selectedPractice?.id) ? "islands#redIcon" : "islands#blueIcon",
           });

@@ -3,6 +3,9 @@ import Header from "../../features/nav/Header.jsx";
 import Footer from "../../components/Footer.jsx";
 import Breadcrumbs from "../../components/Breadcrumbs.jsx";
 import NewsCard from "../../features/news/NewsCard.jsx";
+import useSiteContact from "../../features/contacts/useSiteContact.js";
+import { getDefaultSiteContact } from "../../features/contacts/siteContacts.js";
+import { ImcroContactPanel } from "../../components/imcro/ImcroPublicComponents.jsx";
 import {
   ARCHIV_ROUTES,
   DEYATELNOST_ROUTES,
@@ -88,6 +91,7 @@ function HubStyles() {
       .hub-card, .hub-open { transition: transform var(--app-transition), border-color var(--app-transition), box-shadow var(--app-transition), background-color var(--app-transition), color var(--app-transition); }
       .hub-card:hover { transform: translateY(-2px); border-color: var(--imcro-color-primary); box-shadow: var(--imcro-shadow-card-hover); }
       .hub-empty { border: 1px solid var(--imcro-color-border); border-radius: var(--imcro-radius-card); background: #fff; color: var(--imcro-color-text-muted); padding: 18px; font-weight: 750; line-height: 1.55; margin-top: 18px; width: 100%; box-shadow: var(--imcro-shadow-card); }
+      .hub-contact-section { margin-top: 28px; }
       .hub-section-head { margin: 30px 0 14px; display: flex; align-items: end; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
       .hub-section-head h2 { margin: 0; color: var(--imcro-color-surface); font-size: clamp(24px, 6vw, 40px); line-height: 1.08; }
       .methodika-card { display: grid; gap: 10px; padding: 18px; min-height: 176px; }
@@ -129,7 +133,8 @@ function HubNewsList({ title, newsItems, onOpenArticle, onOpenAuthor }) {
   );
 }
 
-function HubSectionLayout({ title, lead, homePath, homeLabel, children, heroClassName = "", ...props }) {
+function HubSectionLayout({ title, lead, homePath, homeLabel, contactPath, children, heroClassName = "", ...props }) {
+  const contactBlock = useSiteContact(contactPath, getDefaultSiteContact(contactPath));
   return (
     <HubShell {...props}>
       <div className="hub-shell">
@@ -140,12 +145,25 @@ function HubSectionLayout({ title, lead, homePath, homeLabel, children, heroClas
           <p>{lead}</p>
         </section>
         {children}
+        {contactBlock?.contacts?.length > 0 && (
+          <section className="hub-contact-section">
+            <ImcroContactPanel
+              title={contactBlock.title}
+              description={contactBlock.description}
+              contacts={contactBlock.contacts}
+            />
+          </section>
+        )}
       </div>
     </HubShell>
   );
 }
 
 export function MethodikaHomePage({ newsItems = [], ...props }) {
+  const contactBlock = useSiteContact(
+    "/metodicheskoe-prostranstvo/",
+    getDefaultSiteContact("/metodicheskoe-prostranstvo/"),
+  );
   const methodikaRoot = SECTION_TREE.find((section) => section.path === "/metodicheskoe-prostranstvo/");
   const cards = METHODIKA_SUBJECT_CARDS.map((subject) => {
     const subjectPath = `/metodika/${subject.slug}/`;
@@ -189,6 +207,15 @@ export function MethodikaHomePage({ newsItems = [], ...props }) {
             </Link>
           ))}
         </div>
+        {contactBlock?.contacts?.length > 0 && (
+          <section className="hub-contact-section">
+            <ImcroContactPanel
+              title={contactBlock.title}
+              description={contactBlock.description}
+              contacts={contactBlock.contacts}
+            />
+          </section>
+        )}
       </div>
     </HubShell>
   );
@@ -216,6 +243,7 @@ export function MethodikaSubjectPage({ newsItems = [], ...props }) {
       lead={`Материалы предметного кабинета: ${subjectName}.`}
       homePath="/metodika/"
       homeLabel="Методическое пространство"
+      contactPath={`/metodika/${predmetSlug}/`}
     >
       <HubNewsList
         title="Материалы кабинета"
@@ -230,7 +258,7 @@ export function MethodikaSubjectPage({ newsItems = [], ...props }) {
 export function MethodikaStaticPage({ page, newsItems = [], ...props }) {
   const items = newsItems.filter((item) => item.hub_kind === "methodika" && item.hub_path === page.path.split("/").filter(Boolean).slice(1).join("/"));
   return (
-    <HubSectionLayout {...props} title={page.title} lead={page.lead} homePath="/metodika/" homeLabel="Методическое пространство">
+    <HubSectionLayout {...props} title={page.title} lead={page.lead} homePath="/metodika/" homeLabel="Методическое пространство" contactPath={page.path}>
       <HubNewsList title="Материалы раздела" newsItems={items} onOpenArticle={props.onOpenArticle} onOpenAuthor={props.onOpenAuthor} />
     </HubSectionLayout>
   );
@@ -273,7 +301,7 @@ function GenericHubSection({ homePath, homeLabel, section, newsItems = [], kind,
     return (item.hub_kind === kind && item[sectionField] === section.value) || hasStoredSectionKey(item, selectedKey);
   });
   return (
-    <HubSectionLayout {...props} homePath={homePath} homeLabel={homeLabel} title={section.title} lead={section.lead}>
+    <HubSectionLayout {...props} homePath={homePath} homeLabel={homeLabel} title={section.title} lead={section.lead} contactPath={section.path}>
       <HubNewsList title="Новости и материалы" newsItems={items} onOpenArticle={props.onOpenArticle} onOpenAuthor={props.onOpenAuthor} />
     </HubSectionLayout>
   );

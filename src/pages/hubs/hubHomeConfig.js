@@ -108,12 +108,12 @@ const NOKO_MATERIAL_CARDS = [
 ];
 
 const NOKO_CONTACTS = [
-  { label: "Ответственный специалист", value: "Иванова Анна Петровна" },
+  { label: "ФИО", value: "Иванова Анна Петровна" },
   { label: "Должность", value: "начальник отдела НОКО" },
   { label: "Телефон", value: "+7 (123) 456-78-90", href: "tel:+71234567890" },
   { label: "Кабинет", value: "124" },
   { label: "Электронная почта", value: "noko@imzro.edu.ru", href: "mailto:noko@imzro.edu.ru" },
-  { label: "Рабочие часы", value: "Пн-Пт: 09:00-18:00" },
+  { label: "График работы", value: "Пн-Пт: 09:00-18:00" },
   { label: "Перерыв", value: "13:00-14:00" },
 ];
 
@@ -159,7 +159,7 @@ function createContacts(section) {
   const contact = section.contact;
   const contacts = [
     {
-      label: "Ответственный специалист",
+      label: "ФИО",
       value: contact?.person || "МКУ ИМЦРО",
     },
   ];
@@ -173,7 +173,7 @@ function createContacts(section) {
   }
 
   if (contact?.schedule) {
-    contacts.push({ label: "Рабочие часы", value: contact.schedule });
+    contacts.push({ label: "График работы", value: contact.schedule });
   }
 
   if (!contact?.phone && !contact?.email && !contact?.schedule) {

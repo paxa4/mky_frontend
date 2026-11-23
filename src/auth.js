@@ -26,6 +26,7 @@ export const DEFAULT_ROLE_PERMISSIONS = {
     tpmpk: "edit",
     audit_log: "view",
     practice_expert: "none",
+    contact_info: "edit",
   },
   methodist: {
     articles: "edit",
@@ -35,6 +36,7 @@ export const DEFAULT_ROLE_PERMISSIONS = {
     tpmpk: "none",
     audit_log: "view",
     practice_expert: "none",
+    contact_info: "none",
   },
   metodist_editor: {
     articles: "edit",
@@ -44,6 +46,7 @@ export const DEFAULT_ROLE_PERMISSIONS = {
     tpmpk: "none",
     audit_log: "view",
     practice_expert: "none",
+    contact_info: "none",
   },
   operator: {
     articles: "none",
@@ -53,6 +56,7 @@ export const DEFAULT_ROLE_PERMISSIONS = {
     tpmpk: "edit",
     audit_log: "view",
     practice_expert: "none",
+    contact_info: "none",
   },
   tpmpk_admin: {
     articles: "none",
@@ -62,6 +66,7 @@ export const DEFAULT_ROLE_PERMISSIONS = {
     tpmpk: "edit",
     audit_log: "view",
     practice_expert: "none",
+    contact_info: "none",
   },
   tpmpk_operator: {
     articles: "none",
@@ -71,6 +76,7 @@ export const DEFAULT_ROLE_PERMISSIONS = {
     tpmpk: "edit",
     audit_log: "view",
     practice_expert: "none",
+    contact_info: "none",
   },
   domu_editor: {
     articles: "edit",
@@ -80,6 +86,7 @@ export const DEFAULT_ROLE_PERMISSIONS = {
     tpmpk: "none",
     audit_log: "view",
     practice_expert: "none",
+    contact_info: "none",
   },
   user: {
     articles: "none",
@@ -89,6 +96,7 @@ export const DEFAULT_ROLE_PERMISSIONS = {
     tpmpk: "none",
     audit_log: "none",
     practice_expert: "none",
+    contact_info: "none",
   },
   practice_expert: {
     articles: "none",
@@ -98,6 +106,7 @@ export const DEFAULT_ROLE_PERMISSIONS = {
     tpmpk: "none",
     audit_log: "none",
     practice_expert: "edit",
+    contact_info: "none",
   },
 };
 

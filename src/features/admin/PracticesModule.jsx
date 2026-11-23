@@ -2,9 +2,11 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { API_BASE } from "../../constants/index.js";
 import { authHeaders, getStoredAccessToken } from "../../utils/authHeaders.js";
 import { PracticeLocationPicker } from "../practices/PracticeMap.jsx";
-import { PRACTICE_LEVELS, PRACTICE_STATUS_LABELS, PRACTICE_TOPICS } from "../practices/practiceTaxonomy.js";
+import PracticeApplicationFields from "../practices/PracticeApplicationFieldsExpanded.jsx";
+import { derivePracticeFields } from "../practices/practiceApplicationData.js";
+import { PRACTICE_STATUS_LABELS } from "../practices/practiceTaxonomy.js";
 
-const EMPTY_PRACTICE = { title: "", slug: "", summary: "", description: "", topic: "", level: "Начальный", organization: "", municipality: "", latitude: null, longitude: null, author_name: "", author_email: "", target_audience: "", implementation_period: "", results: "", materials: "", cover_image_url: "", status: "draft" };
+const EMPTY_PRACTICE = { title: "", slug: "", summary: "", description: "", topic: "", level: "Не присвоен", practice_type: "", implementation_level: "", application_data: {}, organization: "", municipality: "", latitude: null, longitude: null, author_name: "", author_email: "", target_audience: "", implementation_period: "", results: "", materials: "", cover_image_url: "", status: "draft" };
 
 function normalizePractice(practice) {
   const materials = Array.isArray(practice?.materials) ? practice.materials.map((item) => item?.url || item?.title || "").filter(Boolean).join("\n") : "";
@@ -13,6 +15,13 @@ function normalizePractice(practice) {
 
 function materialPayload(value) {
   return String(value || "").split("\n").map((item) => item.trim()).filter(Boolean).map((url) => ({ title: url.split("/").pop() || url, url }));
+}
+
+function practiceAddress(practice) {
+  const data = practice.application_data || {};
+  return [practice.municipality, data.postal_code, data.street, data.house_number, data.building, practice.organization]
+    .filter(Boolean)
+    .join(", ");
 }
 
 function formatDate(value) {
@@ -54,7 +63,18 @@ export default function PracticesModule() {
     if (!token || !editing) return;
     setSaving(true);
     setError("");
-    const payload = { ...editing, materials: materialPayload(editing.materials), author_email: editing.author_email || null, slug: editing.slug || null, cover_image_url: editing.cover_image_url || null };
+    const derived = derivePracticeFields(editing.application_data);
+    const payload = {
+      ...editing,
+      summary: editing.summary || derived.summary,
+      description: derived.description || editing.description,
+      results: derived.results || editing.results,
+      target_audience: derived.target_audience || editing.target_audience,
+      materials: materialPayload(editing.materials),
+      author_email: editing.author_email || null,
+      slug: editing.slug || null,
+      cover_image_url: editing.cover_image_url || null,
+    };
     const isNew = editing.id === "new";
     try {
       const response = await fetch(`${API_BASE}/api/admin/practices/${isNew ? "" : `${editing.id}`}`, { method: isNew ? "POST" : "PATCH", headers, body: JSON.stringify(payload) });
@@ -97,21 +117,24 @@ export default function PracticesModule() {
 }
 
 function PracticeEditor({ practice, setPractice, onSubmit, onCancel, saving, error }) {
-  function update(key, value) { setPractice((current) => ({ ...current, [key]: value })); }
+  function update(key, value) {
+    setPractice((current) => ({
+      ...current,
+      [key]: typeof value === "function" ? value(current[key]) : value,
+    }));
+  }
   return (
     <section className="admin-practices-module">
       <style>{ADMIN_PRACTICES_CSS}</style>
       <div className="practice-admin-toolbar"><div><h2>{practice.id === "new" ? "Новая практика" : "Редактирование практики"}</h2><p>Заполните карточку и выберите статус публикации.</p></div></div>
       {error && <div className="practice-admin-error" role="alert">{error}</div>}
       <form className="practice-admin-form" onSubmit={onSubmit}>
-        <label>Название *<input required value={practice.title} onChange={(event) => update("title", event.target.value)} /></label>
-        <label>Краткое описание *<textarea required rows="3" value={practice.summary} onChange={(event) => update("summary", event.target.value)} /></label>
-        <div className="practice-admin-form-grid"><label>Направление *<select required value={practice.topic} onChange={(event) => update("topic", event.target.value)}><option value="">Выберите направление</option>{PRACTICE_TOPICS.map((topic) => <option key={topic} value={topic}>{topic}</option>)}</select></label><label>Уровень<select value={practice.level} onChange={(event) => update("level", event.target.value)}>{PRACTICE_LEVELS.map((level) => <option key={level} value={level}>{level}</option>)}</select></label><label>Статус<select value={practice.status} onChange={(event) => update("status", event.target.value)}>{Object.entries(PRACTICE_STATUS_LABELS).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label><label>Организация *<input required value={practice.organization} onChange={(event) => update("organization", event.target.value)} /></label><label>Муниципалитет<input value={practice.municipality || ""} onChange={(event) => update("municipality", event.target.value)} /></label><label>Автор *<input required value={practice.author_name} onChange={(event) => update("author_name", event.target.value)} /></label><label>Email автора<input type="email" value={practice.author_email || ""} onChange={(event) => update("author_email", event.target.value)} /></label><label>Период реализации<input value={practice.implementation_period || ""} onChange={(event) => update("implementation_period", event.target.value)} /></label><label>Целевая аудитория<input value={practice.target_audience || ""} onChange={(event) => update("target_audience", event.target.value)} /></label></div>
-        <PracticeLocationPicker latitude={practice.latitude} longitude={practice.longitude} query={practice.municipality || practice.organization} onChange={({ latitude, longitude }) => setPractice((current) => ({ ...current, latitude, longitude }))} />
-        <label>Описание практики *<textarea required rows="9" value={practice.description} onChange={(event) => update("description", event.target.value)} /></label>
-        <label>Результаты<textarea rows="5" value={practice.results || ""} onChange={(event) => update("results", event.target.value)} /></label>
-        <label>Ссылки на материалы<textarea rows="4" placeholder="По одной ссылке в строке" value={practice.materials} onChange={(event) => update("materials", event.target.value)} /></label>
-        <label>Ссылка на обложку<input type="url" value={practice.cover_image_url || ""} onChange={(event) => update("cover_image_url", event.target.value)} /></label>
+        <div className="practice-admin-form-grid">
+          <label>Статус публикации<select value={practice.status} onChange={(event) => update("status", event.target.value)}>{Object.entries(PRACTICE_STATUS_LABELS).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>
+          <label>Обложка карточки (необязательно)<input type="url" value={practice.cover_image_url || ""} onChange={(event) => update("cover_image_url", event.target.value)} placeholder="https://..." /></label>
+        </div>
+        <PracticeApplicationFields practice={practice} update={update} isAdmin />
+        <PracticeLocationPicker latitude={practice.latitude} longitude={practice.longitude} query={practiceAddress(practice)} onChange={({ latitude, longitude }) => setPractice((current) => ({ ...current, latitude, longitude }))} />
         <div className="practice-admin-form-actions"><button className="practice-admin-secondary" type="button" onClick={onCancel}>Отмена</button><button className="practice-admin-primary" disabled={saving} type="submit">{saving ? "Сохранение..." : "Сохранить"}</button></div>
       </form>
     </section>

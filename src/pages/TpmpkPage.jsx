@@ -2,6 +2,8 @@ import { Link } from "react-router-dom";
 import Footer from "../components/Footer.jsx";
 import Header from "../features/nav/Header.jsx";
 import Breadcrumbs from "../components/Breadcrumbs.jsx";
+import useSiteContact from "../features/contacts/useSiteContact.js";
+import { getDefaultSiteContact } from "../features/contacts/siteContacts.js";
 
 const phone = "+73952481256";
 const phoneLabel = "+7 (3952) 48-12-56";
@@ -25,6 +27,10 @@ const quickLinks = [
 ];
 
 export default function TpmpkPage({ currentUser, onGoAuth, onGoAdmin, onGoProfile }) {
+  const contactBlock = useSiteContact("/tpmpk/", getDefaultSiteContact("/tpmpk/"));
+  const phoneContact = contactBlock?.contacts?.find((item) => item.label.toLowerCase().includes("телефон"));
+  const currentPhone = phoneContact?.value || phoneLabel;
+  const currentPhoneHref = phoneContact?.href || `tel:${phone}`;
   return (
     <div className="tpmpk-page">
       <style>{`
@@ -334,8 +340,8 @@ export default function TpmpkPage({ currentUser, onGoAuth, onGoAdmin, onGoProfil
                   <Link className="tpmpk-primary" to="/tpmpk/zapis">
                     Записать ребёнка на обследование
                   </Link>
-                  <a className="tpmpk-phone" href={`tel:${phone}`}>
-                    {phoneLabel}
+                  <a className="tpmpk-phone" href={currentPhoneHref}>
+                    {currentPhone}
                   </a>
                 </div>
               </div>
@@ -344,7 +350,7 @@ export default function TpmpkPage({ currentUser, onGoAuth, onGoAdmin, onGoProfil
 
           <section className="tpmpk-section" aria-label="Контактная информация">
             <div className="tpmpk-contact-grid">
-              {contactCards.map((item) => (
+              {(contactBlock?.contacts || contactCards).map((item) => (
                 <article className="tpmpk-contact-card" key={item.label}>
                   <span>{item.label}</span>
                   <strong>{item.value}</strong>

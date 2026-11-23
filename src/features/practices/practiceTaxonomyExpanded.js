@@ -21,6 +21,7 @@ export const PRACTICE_LEVELS = ["Начальный", "Продвинутый", 
 export const PRACTICE_UNASSIGNED_LEVEL = "Не присвоен";
 export const PRACTICE_ADMIN_LEVELS = [...PRACTICE_LEVELS, PRACTICE_UNASSIGNED_LEVEL];
 export const PRACTICE_IMPLEMENTATION_LEVELS = ["Институциональный", "Муниципальный", "Региональный", "Федеральный"];
+export const PRACTICE_MUNICIPALITIES = ["Правобережный", "Октябрьский", "Свердловский", "Ленинский"];
 export const PRACTICE_TYPES = ["Педагогическая практика", "Методическая практика", "Управленческая практика"];
 export const PRACTICE_EDUCATION_LEVELS = [
   "Начальное общее образование",

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import Header from "../features/nav/Header.jsx";
+import useSiteContact from "../features/contacts/useSiteContact.js";
 import Footer from "../components/Footer.jsx";
 import {
   ImcroActivityCarousel,
@@ -269,6 +270,15 @@ export default function HomePage({
   onOpenAuthor,
 }) {
   const navigate = useNavigate();
+  const homeContact = useSiteContact("/", {
+    title: "Контактная информация",
+    description: "Свяжитесь с МКУ ИМЦРО или откройте адрес центра на карте.",
+    contacts: [
+      { label: "Адрес", value: contactInfo.address },
+      { label: "Телефон", value: contactInfo.phone, href: "tel:+73952201985" },
+      { label: "Email", value: contactInfo.email, href: `mailto:${contactInfo.email}` },
+    ],
+  });
   const featuredNews = useMemo(() => getFeaturedNews(publishedNews), [publishedNews]);
   const featuredNewsHref = useMemo(() => getNewsHref(featuredNews), [featuredNews]);
   const featuredNewsDateTime = useMemo(() => getNewsDateTime(featuredNews), [featuredNews]);
@@ -307,11 +317,7 @@ export default function HomePage({
     openFeaturedNews(event);
   }, [openFeaturedNews]);
 
-  const contactItems = [
-    { label: "Адрес", value: contactInfo.address },
-    { label: "Телефон", value: contactInfo.phone, href: "tel:+73952201985" },
-    { label: "Email", value: contactInfo.email, href: `mailto:${contactInfo.email}` },
-  ];
+  const contactItems = homeContact?.contacts || [];
 
   return (
     <ImcroPage className="home-page home-page--imcro">
@@ -441,8 +447,8 @@ export default function HomePage({
               </ImcroCard>
               <ImcroContactPanel
                 className="home-contact-panel"
-                title="Контактная информация"
-                description="Свяжитесь с МКУ ИМЦРО или откройте адрес центра на карте."
+                title={homeContact?.title || "Контактная информация"}
+                description={homeContact?.description}
                 contacts={contactItems}
                 actionText="Открыть на карте"
                 actionHref={mapHref}

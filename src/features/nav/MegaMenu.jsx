@@ -69,6 +69,7 @@ export const MEGA_MENU_GROUPS = [
     description: "Запись на приём, документы, состав и нормативная база комиссии.",
     links: [
       link("Записаться на приём", "/tpmpk/zapis"),
+      link("Контакты ТПМПК", "/tpmpk/kontakty/"),
       link("Перечень документов для прохождения ПМПК", "/tpmpk/dokumenty/"),
       link("Состав территориальной ПМПК", "/tpmpk/sostav/"),
       link("Нормативные документы", "/tpmpk/npa/"),

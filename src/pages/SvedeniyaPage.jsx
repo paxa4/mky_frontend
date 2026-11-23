@@ -3,6 +3,8 @@ import { Link, useLocation } from "react-router-dom";
 import Footer from "../components/Footer.jsx";
 import Header from "../features/nav/Header.jsx";
 import Breadcrumbs from "../components/Breadcrumbs.jsx";
+import useSiteContact from "../features/contacts/useSiteContact.js";
+import { getDefaultSiteContact } from "../features/contacts/siteContacts.js";
 import {
   SVEDENIYA_NAV_ITEMS,
   SVEDENIYA_ROUTE_TO_ANCHOR,
@@ -296,7 +298,8 @@ function staffInitials(name) {
     .join("");
 }
 
-function StaffValue({ type, value }) {
+function StaffValue({ type, value, href }) {
+  if (href) return <a href={href} {...linkAttributes(href)}>{value}</a>;
   if (type === "phone") {
     return <a href={`tel:${value.replace(/[^\d+]/g, "")}`}>{value}</a>;
   }
@@ -314,7 +317,7 @@ function StaffFactList({ facts }) {
       {facts.map((fact) => (
         <div key={fact.label}>
           <dt>{fact.label}</dt>
-          <dd><StaffValue type={fact.type} value={fact.value} /></dd>
+          <dd><StaffValue type={fact.type} value={fact.value} href={fact.href} /></dd>
         </div>
       ))}
     </dl>
@@ -332,6 +335,7 @@ function StaffCard({ person, variant }) {
     { label: "Кабинет", value: person.office },
     { label: "Подразделение", value: person.department },
     { label: "Направление", value: person.direction },
+    ...(person.contactDetails || []),
   ].filter((item) => item.value);
   const expandedFacts = [
     { label: "Образование", value: person.education },
@@ -545,8 +549,112 @@ function OverviewCard({ section }) {
   );
 }
 
+function structuredContactCards(contacts, groupTitle, keyPrefix = "") {
+  const cards = new Map();
+  contacts.filter((item) => keyPrefix
+    ? item.key?.startsWith(keyPrefix)
+    : item.group === groupTitle).forEach((item) => {
+    const key = item.key || item.card || "contacts";
+    if (!cards.has(key)) cards.set(key, { key, title: item.card || "Контакты", details: [] });
+    if (!item.value) return;
+    const label = item.label.trim().toLowerCase();
+    const icon = label.includes("телефон") ? "phone"
+      : label.includes("почт") || label.includes("email") ? "mail"
+        : label.includes("адрес") ? "address"
+          : label.includes("режим") || label.includes("график") || label.includes("обед") || label.includes("выход") ? "clock" : undefined;
+    cards.get(key).details.push({ label: item.label, value: item.value, href: item.href || undefined, icon });
+  });
+  return [...cards.values()];
+}
+
 function Section({ section }) {
   const navItem = SVEDENIYA_NAV_ITEMS.find((item) => item.anchor === section.anchor);
+  const contactBlock = useSiteContact(section.path, getDefaultSiteContact(section.path));
+  const contacts = contactBlock?.contacts || [];
+  const hasStructuredContacts = contacts.some((item) => item.group || item.card || item.key);
+  const contactValues = new Map(contacts
+    .filter((item) => !item.group && !item.card && !item.key)
+    .map((item) => [item.label.trim().toLowerCase(), item]));
+  const blocks = section.blocks.map((block) => {
+    if (section.anchor === "common" && block.type === "contacts") {
+      const cards = structuredContactCards(contacts, block.title);
+      if (cards.length) return { ...block, items: cards };
+
+      if (hasStructuredContacts) return null;
+
+      if (block.title === "Контакты и режим работы" && contactValues.size) {
+        const details = [...contactValues.values()].map((item) => ({
+          label: item.label,
+          value: item.value,
+          href: item.href || undefined,
+        }));
+        return { ...block, items: block.items.map((item, index) => index === 0 ? { ...item, details } : item) };
+      }
+    }
+
+    if (section.anchor === "struct" && block.type === "subdivisions") {
+      const cards = structuredContactCards(contacts, "", "subdivision-");
+      if (cards.length) {
+        const cardsByKey = new Map(cards.map((card) => [card.key, card]));
+        return {
+          ...block,
+          items: block.items.map((item, index) => {
+            const card = cardsByKey.get(`subdivision-${index}`);
+            return card ? { ...item, title: card.title, details: card.details } : item;
+          }),
+        };
+      }
+    }
+
+    if (section.anchor === "employees" && block.type === "staff") {
+      return {
+        ...block,
+        items: block.items.map((person, index) => {
+          const cardKey = `${block.variant === "leaders" ? "leader" : "teacher"}-${index}`;
+          const cardFields = contacts.filter((item) => item.key === cardKey);
+          if (cardFields.length) {
+            const values = new Map(cardFields.map((item) => [item.label.trim().toLowerCase(), item.value]));
+            const getValue = (label) => values.get(label) || "";
+            const knownLabels = new Set(["фио", "должность", "телефон", "электронная почта", "кабинет", "подразделение", "направление"]);
+            return {
+              ...person,
+              name: getValue("фио"),
+              position: getValue("должность"),
+              phone: getValue("телефон"),
+              email: getValue("электронная почта"),
+              office: getValue("кабинет"),
+              department: getValue("подразделение"),
+              direction: getValue("направление"),
+              contactDetails: cardFields
+                .filter((item) => !knownLabels.has(item.label.trim().toLowerCase()) && item.value)
+                .map((item) => ({ label: item.label, value: item.value, href: item.href || undefined })),
+            };
+          }
+
+          if (block.variant !== "leaders" || index !== 0) return person;
+          const getValue = (label, fallback) => contactValues.has(label) ? contactValues.get(label).value : fallback;
+          return {
+            ...person,
+            name: getValue("фио", person.name),
+            position: getValue("должность", person.position),
+            phone: getValue("телефон", person.phone),
+            email: getValue("электронная почта", person.email),
+          };
+        }),
+      };
+    }
+
+    return block;
+  }).filter(Boolean);
+
+  if (section.anchor === "common" && hasStructuredContacts) {
+    const originalGroups = new Set(section.blocks.filter((block) => block.type === "contacts").map((block) => block.title));
+    const addedGroups = [...new Set(contacts.map((item) => item.group).filter((group) => group && !originalGroups.has(group)))];
+    addedGroups.forEach((group) => {
+      const items = structuredContactCards(contacts, group);
+      if (items.length) blocks.push({ type: "contacts", title: group, items });
+    });
+  }
 
   return (
     <section className="sv-section" id={section.anchor}>
@@ -568,7 +676,7 @@ function Section({ section }) {
         <p>{section.lead}</p>
       </div>
       <div className="sv-section-body">
-        {section.blocks.map((block, index) => (
+        {blocks.map((block, index) => (
           <SectionBlock block={block} key={`${section.anchor}-${block.type}-${index}`} />
         ))}
       </div>

@@ -4,6 +4,8 @@ import Footer from "../../components/Footer.jsx";
 import { ImcroPage } from "../../components/imcro/ImcroPublicComponents.jsx";
 import Header from "../../features/nav/Header.jsx";
 import { articleMatchesPublicSection } from "../../features/admin/articlePlacements.js";
+import useSiteContact from "../../features/contacts/useSiteContact.js";
+import { getDefaultSiteContact } from "../../features/contacts/siteContacts.js";
 import { HubSectionPageLayout } from "../hubs/HubSectionPageLayout.jsx";
 import {
   findSectionByPath,
@@ -30,6 +32,7 @@ function getSectionBreadcrumbs(node) {
 
 export function SectionRoutePage({ node, newsItems = [], ...props }) {
   const navigate = useNavigate();
+  const contactBlock = useSiteContact(node.path, getDefaultSiteContact(node.path));
   const articles = getSectionArticles(newsItems, node);
   const parentNode = node.parentPath ? findSectionByPath(node.parentPath) : null;
 
@@ -63,6 +66,7 @@ export function SectionRoutePage({ node, newsItems = [], ...props }) {
           parentTitle={parentNode?.title || node.rootTitle}
           onOpenArticle={handleOpenArticle}
           showArticleList={node.showArticleList !== false}
+          contactBlock={contactBlock}
         />
       </main>
       <Footer />

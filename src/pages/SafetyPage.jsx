@@ -9,9 +9,12 @@ import {
 } from "../components/imcro/ImcroPublicComponents.jsx";
 import { ArticleList } from "./hubs/HubSectionPageLayout.jsx";
 import { articleMatchesPublicSection } from "../features/admin/articlePlacements.js";
+import useSiteContact from "../features/contacts/useSiteContact.js";
+import { getDefaultSiteContact } from "../features/contacts/siteContacts.js";
 
 export default function SafetyPage({ currentUser, onGoAuth, onGoAdmin, onGoProfile, newsItems = [], onOpenArticle }) {
   const articles = newsItems.filter((item) => articleMatchesPublicSection(item, { path: "/bezopasnost/" }));
+  const contactBlock = useSiteContact("/bezopasnost/", getDefaultSiteContact("/bezopasnost/"));
   return (
     <ImcroPage className="safety-page">
       <Header
@@ -31,6 +34,11 @@ export default function SafetyPage({ currentUser, onGoAuth, onGoAdmin, onGoProfi
             </ImcroCard>
           </ImcroSection>
           <ArticleList articles={articles} onOpenArticle={onOpenArticle} />
+          {contactBlock?.contacts?.length > 0 && (
+            <ImcroSection>
+              <ImcroContactPanel title={contactBlock.title} description={contactBlock.description} contacts={contactBlock.contacts} />
+            </ImcroSection>
+          )}
         </ImcroContainer>
       </main>
       <Footer />

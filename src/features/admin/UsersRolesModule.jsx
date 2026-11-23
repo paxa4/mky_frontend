@@ -41,6 +41,7 @@ const MODULE_DEFINITIONS = [
   { key: "tpmpk", label: "Кабинет ТПМПК", description: "Расписание, слоты и записи" },
   { key: "audit_log", label: "Журнал действий", description: "Просмотр действий пользователей" },
   { key: "practice_expert", label: "Экспертные заключения", description: "Публикация заключений по практикам" },
+  { key: "contact_info", label: "Контактная информация", description: "Редактирование контактов разделов сайта" },
 ];
 
 const PERMISSION_OPTIONS = [
@@ -635,6 +636,7 @@ export default function UsersRolesModule({ currentUser }) {
         .ur-perm-badge svg   { width: 11px; height: 11px; flex-shrink: 0; }
         /* dropdown */
         .ur-perm-dd-wrap { position: relative; }
+        .ur-permission-card { position: relative; z-index: 2; overflow: visible; }
         .ur-perm-dd {
           position: absolute; top: calc(100% + 6px); right: 0; z-index: 200;
           min-width: 168px;
@@ -953,7 +955,7 @@ export default function UsersRolesModule({ currentUser }) {
             </div>
           </div>
 
-          <div className="ur-card">
+          <div className="ur-card ur-permission-card">
             <div className="ur-card-head">
               <h3>Права роли</h3>
             </div>

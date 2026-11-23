@@ -3,6 +3,9 @@ import Footer from "../../components/Footer.jsx";
 import Header from "../../features/nav/Header.jsx";
 import Breadcrumbs from "../../components/Breadcrumbs.jsx";
 import NewsCard from "../../features/news/NewsCard.jsx";
+import useSiteContact from "../../features/contacts/useSiteContact.js";
+import { getDefaultSiteContact } from "../../features/contacts/siteContacts.js";
+import { ImcroContactPanel } from "../../components/imcro/ImcroPublicComponents.jsx";
 import { DOMU_ARTICLE_SECTIONS, DOMU_SECTIONS } from "./domuSections.js";
 
 const contactCards = [
@@ -97,6 +100,7 @@ function DomuStyles() {
 
 export function DomUchitelyaHome(props) {
   const news = props.newsItems || [];
+  const homeContact = useSiteContact("/dom-uchitelya/", getDefaultSiteContact("/dom-uchitelya/"));
   return (
     <DomuShell {...props}>
       <div className="domu-shell">
@@ -114,7 +118,7 @@ export function DomUchitelyaHome(props) {
 
         <section className="domu-section">
           <div className="domu-contact-grid" style={{ marginTop: 18 }}>
-            {contactCards.map(item => (
+            {(homeContact?.contacts || contactCards).map(item => (
               <article className="domu-card domu-contact" key={item.label}>
                 <span>{item.label}</span>
                 <strong>{item.value}</strong>
@@ -161,6 +165,7 @@ export function DomUchitelyaHome(props) {
 
 export function DomUchitelyaStaticPage({ section, ...props }) {
   const copy = pageCopy[section.path] || { lead: section.text, items: [] };
+  const contactBlock = useSiteContact(section.path, getDefaultSiteContact(section.path));
   return (
     <DomuShell {...props}>
       <div className="domu-shell">
@@ -169,9 +174,20 @@ export function DomUchitelyaStaticPage({ section, ...props }) {
           <span className="domu-eyebrow">Дом учителя</span>
           <h1>{section.title}</h1>
           <p className="domu-lead">{copy.lead}</p>
-          <ul className="domu-list">
-            {copy.items.map(item => <li key={item}>{item}</li>)}
-          </ul>
+          {contactBlock?.contacts?.length > 0 ? (
+            <div className="domu-contact-grid">
+              {contactBlock.contacts.map((item, index) => (
+                <article className="domu-card domu-contact" key={`${item.label}-${index}`}>
+                  <span>{item.label}</span>
+                  <strong>{item.href ? <a href={item.href}>{item.value}</a> : item.value}</strong>
+                </article>
+              ))}
+            </div>
+          ) : (
+            <ul className="domu-list">
+              {copy.items.map(item => <li key={item}>{item}</li>)}
+            </ul>
+          )}
         </section>
       </div>
     </DomuShell>
@@ -187,6 +203,7 @@ function hasDomuSection(item, value) {
 
 export function DomUchitelyaArticleSectionPage({ section, newsItems = [], ...props }) {
   const news = newsItems.filter((item) => hasDomuSection(item, section.value));
+  const contactBlock = useSiteContact(section.path, getDefaultSiteContact(section.path));
   return (
     <DomuShell {...props}>
       <div className="domu-shell">
@@ -202,6 +219,11 @@ export function DomUchitelyaArticleSectionPage({ section, newsItems = [], ...pro
           ))}
         </div>
         {!news.length && <div className="domu-empty">В этом разделе пока нет опубликованных материалов.</div>}
+        {contactBlock?.contacts?.length > 0 && (
+          <div style={{ marginTop: 24 }}>
+            <ImcroContactPanel title={contactBlock.title} description={contactBlock.description} contacts={contactBlock.contacts} />
+          </div>
+        )}
       </div>
     </DomuShell>
   );

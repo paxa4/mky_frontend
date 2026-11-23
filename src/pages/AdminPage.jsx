@@ -10,6 +10,7 @@ import ArticlesModule from "../features/admin/ArticlesModule.jsx";
 import PracticesModule from "../features/admin/PracticesModule.jsx";
 import AuditLogModule from "../features/admin/AuditLogModule.jsx";
 import UsersRolesModule from "../features/admin/UsersRolesModule.jsx";
+import ContactInfoModule from "../features/admin/ContactInfoModule.jsx";
 import AdminLayout from "../features/admin/AdminLayout.jsx";
 import { canManageUsers, hasPermission } from "../auth.js";
 import { authHeaders, getStoredAccessToken } from "../utils/authHeaders.js";
@@ -22,6 +23,7 @@ const ADMIN_MODULES = [
   { key: "editor", path: "/admin/templates", label: "Конструктор шаблонов", icon: "editor" },
   { key: "users", path: "/admin/users", label: "Пользователи и роли", icon: "users" },
   { key: "audit", path: "/admin/audit", label: "Журнал действий", icon: "audit" },
+  { key: "contacts", path: "/admin/contacts", label: "Контактная информация", icon: "contacts" },
   {
     key: "assistant",
     path: "/admin/assistant",
@@ -71,6 +73,10 @@ const MODULE_META = {
   audit: {
     title: "Журнал действий",
     subtitle: "События администрирования и изменения данных портала",
+  },
+  contacts: {
+    title: "Контактная информация",
+    subtitle: "Редактирование ответственных лиц и каналов связи на страницах сайта",
   },
 };
 
@@ -495,6 +501,7 @@ export default function AdminPage({ currentUser, onArticlesChanged }) {
     users: canManageUsers(currentUser),
     audit: hasPermission(currentUser, "audit_log", "view"),
     assistant: hasPermission(currentUser, "audit_log", "view") || canManageUsers(currentUser),
+    contacts: hasPermission(currentUser, "contact_info", "view"),
   }), [currentUser]);
 
   const activeModule = getActiveAdminModule(location.pathname);
@@ -578,13 +585,15 @@ export default function AdminPage({ currentUser, onArticlesChanged }) {
     content = <UsersRolesModule currentUser={currentUser} />;
   } else if (activeKey === "audit") {
     content = <AuditLogModule />;
+  } else if (activeKey === "contacts") {
+    content = <ContactInfoModule canEdit={hasPermission(currentUser, "contact_info", "edit")} />;
   } else {
     content = <DashboardModule />;
   }
 
   return (
     <AdminLayout
-      modules={ADMIN_MODULES}
+      modules={ADMIN_MODULES.filter((module) => module.key !== "contacts" || permissions.contacts)}
       activeKey={activeKey}
       title={meta.title}
       subtitle={meta.subtitle}

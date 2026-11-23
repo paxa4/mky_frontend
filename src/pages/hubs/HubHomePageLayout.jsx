@@ -1,4 +1,6 @@
 import Breadcrumbs from "../../components/Breadcrumbs.jsx";
+import { useLocation } from "react-router-dom";
+import useSiteContact from "../../features/contacts/useSiteContact.js";
 import Footer from "../../components/Footer.jsx";
 import {
   ImcroContactPanel,
@@ -192,6 +194,8 @@ export function HubHomePageLayout({
   title,
 }) {
   const hasCards = cards.length > 0;
+  const location = useLocation();
+  const resolvedContactBlock = useSiteContact(location.pathname, contactBlock);
 
   return (
     <ImcroPage className={cx("hub-home-page", pageClassName)}>
@@ -251,15 +255,15 @@ export function HubHomePageLayout({
             </ImcroSection>
           )}
 
-          {contactBlock && (
+          {resolvedContactBlock?.contacts?.length > 0 && (
             <ImcroSection className={cx("hub-home-contact-section", classNames.contactSection)}>
               <ImcroContactPanel
                 className={cx("hub-home-contact-panel", classNames.contactPanel)}
-                title={contactBlock.title}
-                description={contactBlock.description}
-                contacts={contactBlock.contacts}
-                actionText={contactBlock.actionText}
-                actionHref={contactBlock.actionHref}
+                title={resolvedContactBlock.title}
+                description={resolvedContactBlock.description}
+                contacts={resolvedContactBlock.contacts}
+                actionText={resolvedContactBlock.actionText}
+                actionHref={resolvedContactBlock.actionHref}
               />
             </ImcroSection>
           )}

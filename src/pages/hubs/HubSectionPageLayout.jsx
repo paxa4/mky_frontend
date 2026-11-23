@@ -2,6 +2,7 @@ import Breadcrumbs from "../../components/Breadcrumbs.jsx";
 import {
   ImcroButton,
   ImcroCard,
+  ImcroContactPanel,
   ImcroContainer,
   ImcroSection,
   ImcroServiceCard,
@@ -186,6 +187,7 @@ export function HubSectionPageLayout({
   onOpenArticle,
   className = "",
   showArticleList = true,
+  contactBlock,
 }) {
   const sections = normalizeArray(childSections);
 
@@ -217,6 +219,16 @@ export function HubSectionPageLayout({
           fallbackTitle={title}
           onOpenArticle={onOpenArticle}
         />
+      )}
+
+      {contactBlock?.contacts?.length > 0 && (
+        <ImcroSection className="hub-section-contact-section">
+          <ImcroContactPanel
+            title={contactBlock.title}
+            description={contactBlock.description}
+            contacts={contactBlock.contacts}
+          />
+        </ImcroSection>
       )}
     </ImcroContainer>
   );
